@@ -5026,6 +5026,43 @@
     const $ = (id) => document.getElementById(id);
     const esc = (v) => String(v ?? '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'","&#039;");
 
+
+
+    window.addEventListener('error', (event) => {
+      console.error('Platform JS error:', event.error || event.message);
+      if (typeof toast === 'function') toast('Ошибка интерфейса: ' + (event.message || 'проверьте консоль'), 'error');
+    });
+    window.addEventListener('unhandledrejection', (event) => {
+      console.error('Platform async error:', event.reason);
+      const msg = event.reason?.message || String(event.reason || 'неизвестная ошибка');
+      if (typeof toast === 'function') toast('Ошибка загрузки данных: ' + msg, 'error');
+    });
+
+    function byIdValue(id, fallback = '') {
+      const el = $(id);
+      return el ? el.value : fallback;
+    }
+
+    function relationBy(items, id) {
+      return (items || []).find(x => String(x.id) === String(id)) || null;
+    }
+
+    async function safeQuery(label, builder, fallback = []) {
+      try {
+        const result = await builder;
+        if (result.error) {
+          console.warn(label + ' skipped:', result.error.message);
+          toast('Supabase: ' + label + ' — ' + result.error.message, 'error');
+          return { data: fallback, error: result.error };
+        }
+        return result;
+      } catch (err) {
+        console.warn(label + ' failed:', err);
+        toast('Supabase: ' + label + ' недоступно', 'error');
+        return { data: fallback, error: err };
+      }
+    }
+
     function toast(message, type = 'info') {
       const wrap = $('toastWrap');
       if (!wrap) return console.log(message);
@@ -6140,51 +6177,98 @@
 
     async function loadTeacherData() {
       const [students, topics, materials, homework, slots, requests, lessonTypes, subscriptions, packages, payments, lessonLogs, bookingRequests, activity, quizzes, quizQuestions, quizAttempts, reviews, cases, examples] = await Promise.all([
-        supabaseClient.from('student_profiles').select('*').order('created_at', { ascending:false }),
-        supabaseClient.from('topics').select('*').order('created_at', { ascending:false }),
-        supabaseClient.from('materials').select('*, topics(title)').order('created_at', { ascending:false }),
-        supabaseClient.from('homework').select('*').order('created_at', { ascending:false }),
-        supabaseClient.from('slots').select('*, student_profiles(name,email), lesson_types(title, subject, price, duration)').order('date').order('time'),
-        supabaseClient.from('lesson_requests').select('*, student_profiles(name,email)').order('created_at', { ascending:false }),
-        supabaseClient.from('lesson_types').select('*').order('sort_order').order('created_at', { ascending:false }),
-        supabaseClient.from('subscriptions').select('*').order('lessons_count'),
-        supabaseClient.from('student_packages').select('*, student_profiles(name,email), lesson_types(title, price, duration), subscriptions(title, lessons_count, discount_percent)').order('created_at', { ascending:false }),
-        supabaseClient.from('payments').select('*, student_profiles(name,email), lesson_types(title), student_packages(lessons_total, lessons_used)').order('created_at', { ascending:false }),
-        supabaseClient.from('lesson_logs').select('*, student_profiles(name,email), slots(date,time), lesson_types(title)').order('created_at', { ascending:false }),
-        supabaseClient.from('booking_requests').select('*, slots(date,time,duration,price,status,lesson_types(title)), student_profiles(name,email)').order('created_at', { ascending:false }),
-        supabaseClient.from('activity_log').select('*').order('created_at', { ascending:false }).limit(50),
-        supabaseClient.from('quizzes').select('*, topics(title), student_profiles(name,email)').order('created_at', { ascending:false }),
-        supabaseClient.from('quiz_questions').select('*').order('created_at'),
-        supabaseClient.from('quiz_attempts').select('*, quizzes(title), student_profiles(name,email)').order('created_at', { ascending:false }),
-        supabaseClient.from('reviews').select('*').order('created_at', { ascending:false }),
-        supabaseClient.from('student_cases').select('*').order('created_at', { ascending:false }),
-        supabaseClient.from('lesson_examples').select('*').order('created_at', { ascending:false })
+        safeQuery('ученики', supabaseClient.from('student_profiles').select('*').order('created_at', { ascending:false })),
+        safeQuery('темы', supabaseClient.from('topics').select('*').order('created_at', { ascending:false })),
+        safeQuery('материалы', supabaseClient.from('materials').select('*').order('created_at', { ascending:false })),
+        safeQuery('домашние задания', supabaseClient.from('homework').select('*').order('created_at', { ascending:false })),
+        safeQuery('слоты', supabaseClient.from('slots').select('*').order('date').order('time')),
+        safeQuery('запросы учеников', supabaseClient.from('lesson_requests').select('*').order('created_at', { ascending:false })),
+        safeQuery('типы занятий', supabaseClient.from('lesson_types').select('*').order('sort_order').order('created_at', { ascending:false })),
+        safeQuery('абонементы', supabaseClient.from('subscriptions').select('*').order('lessons_count')),
+        safeQuery('пакеты учеников', supabaseClient.from('student_packages').select('*').order('created_at', { ascending:false })),
+        safeQuery('оплаты', supabaseClient.from('payments').select('*').order('created_at', { ascending:false })),
+        safeQuery('журнал занятий', supabaseClient.from('lesson_logs').select('*').order('created_at', { ascending:false })),
+        safeQuery('заявки на запись', supabaseClient.from('booking_requests').select('*').order('created_at', { ascending:false })),
+        safeQuery('история действий', supabaseClient.from('activity_log').select('*').order('created_at', { ascending:false }).limit(50)),
+        safeQuery('тесты', supabaseClient.from('quizzes').select('*').order('created_at', { ascending:false })),
+        safeQuery('вопросы тестов', supabaseClient.from('quiz_questions').select('*').order('created_at')),
+        safeQuery('попытки тестов', supabaseClient.from('quiz_attempts').select('*').order('created_at', { ascending:false })),
+        safeQuery('отзывы', supabaseClient.from('reviews').select('*').order('created_at', { ascending:false })),
+        safeQuery('кейсы', supabaseClient.from('student_cases').select('*').order('created_at', { ascending:false })),
+        safeQuery('примеры работ', supabaseClient.from('lesson_examples').select('*').order('created_at', { ascending:false }))
       ]);
+
       state.students = students.data || [];
       state.topics = topics.data || [];
-      state.materials = materials.data || [];
-      state.homework = (homework.data || []).map(h => ({
-        ...h,
-        student_profiles: state.students.find(s => s.id === h.student_id) || h.student_profiles || null,
-        topics: state.topics.find(t => t.id === h.topic_id) || h.topics || null,
-        lesson_types: (lessonTypes.data || []).find(t => t.id === h.lesson_type_id) || h.lesson_types || null
-      }));
-      state.slots = slots.data || [];
-      state.requests = requests.data || [];
       state.lessonTypes = lessonTypes.data || [];
       state.subscriptions = subscriptions.data || [];
-      state.packages = packages.data || [];
-      state.payments = payments.data || [];
-      state.lessonLogs = lessonLogs.data || [];
-      state.bookingRequests = bookingRequests.data || [];
+
+      state.materials = (materials.data || []).map(m => ({
+        ...m,
+        topics: relationBy(state.topics, m.topic_id),
+        student_profiles: relationBy(state.students, m.student_id)
+      }));
+
+      state.homework = (homework.data || []).map(h => ({
+        ...h,
+        student_profiles: relationBy(state.students, h.student_id),
+        topics: relationBy(state.topics, h.topic_id),
+        lesson_types: relationBy(state.lessonTypes, h.lesson_type_id)
+      }));
+
+      state.slots = (slots.data || []).map(slot => ({
+        ...slot,
+        student_profiles: relationBy(state.students, slot.student_profile_id),
+        lesson_types: relationBy(state.lessonTypes, slot.lesson_type_id)
+      }));
+
+      state.requests = (requests.data || []).map(r => ({
+        ...r,
+        student_profiles: relationBy(state.students, r.student_id)
+      }));
+
+      state.packages = (packages.data || []).map(p => ({
+        ...p,
+        student_profiles: relationBy(state.students, p.student_id),
+        lesson_types: relationBy(state.lessonTypes, p.lesson_type_id),
+        subscriptions: relationBy(state.subscriptions, p.subscription_id)
+      }));
+
+      state.payments = (payments.data || []).map(pay => ({
+        ...pay,
+        student_profiles: relationBy(state.students, pay.student_id),
+        lesson_types: relationBy(state.lessonTypes, pay.lesson_type_id),
+        student_packages: relationBy(state.packages, pay.package_id)
+      }));
+
+      state.lessonLogs = (lessonLogs.data || []).map(log => ({
+        ...log,
+        student_profiles: relationBy(state.students, log.student_id),
+        slots: relationBy(state.slots, log.slot_id),
+        lesson_types: relationBy(state.lessonTypes, log.lesson_type_id)
+      }));
+
+      state.bookingRequests = (bookingRequests.data || []).map(req => ({
+        ...req,
+        slots: relationBy(state.slots, req.slot_id),
+        student_profiles: relationBy(state.students, req.student_profile_id)
+      }));
+
       state.activity = activity.data || [];
-      state.quizzes = quizzes.data || [];
+      state.quizzes = (quizzes.data || []).map(q => ({
+        ...q,
+        topics: relationBy(state.topics, q.topic_id),
+        student_profiles: relationBy(state.students, q.student_id)
+      }));
       state.quizQuestions = quizQuestions.data || [];
-      state.quizAttempts = quizAttempts.data || [];
+      state.quizAttempts = (quizAttempts.data || []).map(a => ({
+        ...a,
+        quizzes: relationBy(state.quizzes, a.quiz_id),
+        student_profiles: relationBy(state.students, a.student_id)
+      }));
       state.reviews = reviews.data || [];
       state.cases = cases.data || [];
       state.examples = examples.data || [];
-      state.lessonLogs = lessonLogs.data || [];
     }
 
     async function loadTeacherCabinet() {
@@ -6761,20 +6845,8 @@
     window.toggleLessonType = async function(id, isActive) {
       const { error } = await supabaseClient.from('lesson_types').update({ is_active: isActive }).eq('id', id);
       if (error) return toast(error.message, 'error');
-      await logActivity('set_slot_status', 'slots', id, { status });
-
-      if (status === 'completed') {
-        await autoDeductPackageForSlot(id);
-      }
-
-      if (status === 'confirmed' || status === 'cancelled' || status === 'completed') {
-        await supabaseClient.from('notification_events').insert({
-          type: 'slot_status_changed',
-          channel: 'email',
-          status: 'pending',
-          payload: { to: state.siteSettings?.notification_email || 'bkmz.lby@mail.ru', slotId: id, status }
-        });
-      }
+      await logActivity('toggle_lesson_type', 'lesson_types', id, { isActive });
+      toast(isActive ? 'Тип занятия включён' : 'Тип занятия скрыт', 'success');
       await loadTeacherCabinet();
     }
 
@@ -6924,9 +6996,18 @@
 
     window.setSlotStatus = async function(id, status) {
       const { error } = await supabaseClient.from('slots').update({ status }).eq('id', id);
-      if (error) return alert(error.message);
+      if (error) return toast(error.message, 'error');
+      await logActivity('set_slot_status', 'slots', id, { status });
+      if (status === 'completed') await autoDeductPackageForSlot(id);
+      try {
+        await supabaseClient.from('google_sync_events').insert({ type:'calendar_slot_status_changed', status:'pending', payload:{ slot_id:id, status } });
+      } catch (e) {
+        console.warn('google_sync_events skipped', e);
+      }
+      toast('Статус слота обновлён', 'success');
       await loadTeacherCabinet();
     }
+
     window.deleteSlot = async function(id) {
       if (!confirm('Удалить слот?')) return;
       const { error } = await supabaseClient.from('slots').delete().eq('id', id);
@@ -7661,7 +7742,7 @@
     setLanguage(currentLang);
     prepareCabinetBranchBehavior();
   
-/* ===== CLOUD FUNCTIONAL TEACHER SECTIONS PATCH ===== */
+/* ===== CLOUD FUNCTIONAL TEACHER SECTIONS PATCH v4: stable CRM + safe Supabase loading ===== */
 (function(){
   if (window.__cloudTeacherPatchReady) return;
   window.__cloudTeacherPatchReady = true;
@@ -8021,7 +8102,39 @@
       return;
     }
 
-    const addSlot = e.target.closest('[data-cloud-add-slot-date]');
+
+    const editStudent = e.target.closest('[data-cloud-edit-student]');
+    if (editStudent) {
+      e.preventDefault();
+      const id = editStudent.dataset.cloudEditStudent;
+      const s = (window.state?.students || []).find(x => x.id === id);
+      if (!s) return;
+      const name = prompt('Имя ученика', s.name || '');
+      if (name === null) return;
+      const subject = prompt('Предмет / курс', s.subject || '') ?? (s.subject || '');
+      const telegram = prompt('Telegram', s.telegram || '') ?? (s.telegram || '');
+      const { error } = await supabaseClient.from('student_profiles').update({ name, subject, telegram }).eq('id', id);
+      if (error) return toast2(error.message, 'error');
+      await createGoogleSyncEvent('sheet_student_updated', { id, name, subject, telegram });
+      toast2('Карточка ученика обновлена.');
+      await renderTeacherStudentsFunctional();
+      return;
+    }
+
+    const deleteStudent = e.target.closest('[data-cloud-delete-student]');
+    if (deleteStudent) {
+      e.preventDefault();
+      if (!confirm('Удалить ученика? Связанные ДЗ/материалы могут быть удалены настройками базы.')) return;
+      const id = deleteStudent.dataset.cloudDeleteStudent;
+      const { error } = await supabaseClient.from('student_profiles').delete().eq('id', id);
+      if (error) return toast2(error.message, 'error');
+      await createGoogleSyncEvent('sheet_student_deleted', { id });
+      toast2('Ученик удалён.');
+      await renderTeacherStudentsFunctional();
+      return;
+    }
+
+        const addSlot = e.target.closest('[data-cloud-add-slot-date]');
     if (addSlot && !e.target.closest('button')) {
       e.preventDefault();
       const date = addSlot.dataset.cloudAddSlotDate;
@@ -8134,7 +8247,7 @@
 
     if (f.id === 'cloudAddMaterialForm') {
       e.preventDefault();
-      const row = { title:$id('cloudMaterialTitle').value.trim(), topic_id:$id('cloudMaterialTopic').value || null, student_id:$id('cloudMaterialStudent').value || null, url:$id('cloudMaterialUrl').value.trim(), description:$id('cloudMaterialDescription').value.trim() };
+      const row = { title:$id('cloudMaterialTitle').value.trim(), topic_id:$id('cloudMaterialTopic').value || null, student_id:$id('cloudMaterialStudent').value || null, file_url:$id('cloudMaterialUrl').value.trim(), description:$id('cloudMaterialDescription').value.trim() };
       const { error } = await supabaseClient.from('materials').insert(row);
       if (error) return toast2(error.message,'error');
       await createGoogleSyncEvent('drive_material_created', row);

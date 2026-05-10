@@ -3744,6 +3744,10 @@
     .wizard-panel.active {
       display: block;
     }
+    .booking-schedule-area {
+      margin-top: 18px;
+      animation: fadeIn .22s ease;
+    }
     .choice-grid {
       display: grid;
       grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -4254,7 +4258,7 @@ body.is-logged .profile-only{display:inline-flex!important;}
                 </div>
                 <button class="btn" onclick="bookWithoutSlot()"><i class="fa-solid fa-handshake"></i> Согласовать с преподавателем</button>
               </div>
-              <div class="row-actions"><button class="btn soft" onclick="wizardPrev()">Назад</button><button class="btn" onclick="document.getElementById('calendarGrid').scrollIntoView({behavior:'smooth'})">Выбрать слот ниже</button></div>
+              <div class="row-actions"><button class="btn soft" onclick="wizardPrev()">Назад</button><button class="btn" onclick="showBookingSchedule(true)">Показать свободное время</button></div>
             </div>
 
             <div class="wizard-panel" data-wizard-panel="5">
@@ -4264,19 +4268,21 @@ body.is-logged .profile-only{display:inline-flex!important;}
             </div>
           </div>
 
-          <div class="panel" style="margin-bottom:18px;">
-            <div class="calendar-toolbar">
-              <h3>Свободное время</h3>
-              <div class="row-actions" style="margin-top:0;">
-                <button class="btn small soft" id="calendarPrevWeek">← Неделя</button>
-                <button class="btn small soft" id="calendarToday">Сегодня</button>
-                <button class="btn small soft" id="calendarNextWeek">Неделя →</button>
+          <div id="bookingScheduleArea" class="booking-schedule-area" style="display:none;">
+            <div class="panel" style="margin-bottom:18px;">
+              <div class="calendar-toolbar">
+                <h3>Свободное время</h3>
+                <div class="row-actions" style="margin-top:0;">
+                  <button class="btn small soft" id="calendarPrevWeek">← Неделя</button>
+                  <button class="btn small soft" id="calendarToday">Сегодня</button>
+                  <button class="btn small soft" id="calendarNextWeek">Неделя →</button>
+                </div>
               </div>
+              <div id="calendarGrid" class="calendar-grid"></div>
             </div>
-            <div id="calendarGrid" class="calendar-grid"></div>
+            <h3>Свободные карточки</h3>
+            <div id="publicSlots" class="slot-list"></div>
           </div>
-          <h3>Свободные карточки</h3>
-          <div id="publicSlots" class="slot-list"></div>
         </section>
 
         <section class="page" id="page-payment">
@@ -4409,7 +4415,7 @@ body.is-logged .profile-only{display:inline-flex!important;}
           <div class="why-grid">
             <div class="why-card"><div class="card-icon"><i class="fa-solid fa-chart-line"></i></div><h3>Прогресс виден</h3><p class="muted">В ЛК отображаются ДЗ, журнал занятий, материалы и остаток занятий по пакету.</p></div>
             <div class="why-card"><div class="card-icon"><i class="fa-solid fa-clipboard-check"></i></div><h3>ДЗ под контролем</h3><p class="muted">Ученик может прикрепить решение, а преподаватель оставить комментарий.</p></div>
-            <div class="why-card"><div class="card-icon"><i class="fa-solid fa-calendar-days"></i></div><h3>Расписание прозрачно</h3><p class="muted">Занятия можно синхронизировать с Google или Apple Calendar.</p></div>
+            <div class="why-card"><div class="card-icon"><i class="fa-solid fa-calendar-days"></i></div><h3>Расписание прозрачно</h3><p class="muted">Расписание видно в личном кабинете, а переносы отправляются преподавателю в уведомления.</p></div>
             <div class="why-card"><div class="card-icon"><i class="fa-solid fa-comments"></i></div><h3>Есть обратная связь</h3><p class="muted">После занятий можно фиксировать, что прошли и что повторить дальше.</p></div>
             <div class="why-card"><div class="card-icon"><i class="fa-solid fa-wallet"></i></div><h3>Оплаты и пакеты</h3><p class="muted">Остаток занятий и оплаты хранятся в системе, чтобы не считать вручную.</p></div>
             <div class="why-card"><div class="card-icon"><i class="fa-solid fa-handshake"></i></div><h3>Гибкий старт</h3><p class="muted">Можно начать с бесплатной диагностики и уже после неё принять решение.</p></div>
@@ -4693,260 +4699,21 @@ body.is-logged .profile-only{display:inline-flex!important;}
           <div class="section-head">
             <div class="kicker"><i class="fa-solid fa-chalkboard-user"></i> ЛК преподавателя</div>
             <h2>Обзор кабинета преподавателя</h2>
-            <p class="lead">Выберите нужный раздел в боковой панели: ученики, материалы, ДЗ, расписание, финансы или отзывы/кейсы.</p>
+            <p class="lead">Здесь только быстрый обзор. Все действия вынесены в отдельные страницы, чтобы не было дублей и старых форм.</p>
           </div>
 
           <div class="grid-3 teacher-overview-grid" style="margin-top:18px;">
-            <div class="panel link-card" onclick="setPage('teacherStudents')"><div class="card-icon"><i class="fa-solid fa-users"></i></div><h3>Ученики</h3><p class="muted">Добавление и список учеников.</p></div>
-            <div class="panel link-card" onclick="setPage('teacherMaterials')"><div class="card-icon"><i class="fa-solid fa-book"></i></div><h3>Материалы и темы</h3><p class="muted">Темы, файлы и материалы.</p></div>
-            <div class="panel link-card" onclick="setPage('teacherHomework')"><div class="card-icon"><i class="fa-solid fa-clipboard-check"></i></div><h3>Домашние задания</h3><p class="muted">Выдача ДЗ.</p></div>
-            <div class="panel link-card" onclick="setPage('teacherHomeworkReview')"><div class="card-icon"><i class="fa-solid fa-file-circle-check"></i></div><h3>Проверка ДЗ</h3><p class="muted">Оценка работ по 100% шкале.</p></div>
-            <div class="panel link-card" onclick="setPage('teacherSchedule')"><div class="card-icon"><i class="fa-solid fa-calendar-days"></i></div><h3>Расписание</h3><p class="muted">Слоты и переносы.</p></div>
-            <div class="panel link-card" onclick="setPage('teacherBookings')"><div class="card-icon"><i class="fa-solid fa-calendar-plus"></i></div><h3>Заявки на занятия</h3><p class="muted">Пробный урок и новые заявки.</p></div>
-            <div class="panel link-card" onclick="setPage('teacherFinance')"><div class="card-icon"><i class="fa-solid fa-wallet"></i></div><h3>Финансы</h3><p class="muted">Цены и абонементы.</p></div>
-            <div class="panel link-card" onclick="setPage('teacherPayments')"><div class="card-icon"><i class="fa-solid fa-receipt"></i></div><h3>Оплаты</h3><p class="muted">Поступления и статусы оплат.</p></div>
-            <div class="panel link-card" onclick="setPage('teacherContent')"><div class="card-icon"><i class="fa-solid fa-star"></i></div><h3>Отзывы и кейсы</h3><p class="muted">Публичный контент сайта.</p></div>
-          </div>
-
-<div class="grid-2" style="margin-bottom:18px;">
-            <div class="panel">
-              <h3>Типы занятий и цены</h3>
-              <form class="form-grid" id="addLessonTypeForm">
-                <div class="field"><label>Название типа занятия</label><input id="lessonTypeTitle" required placeholder="Математика · 60 минут"></div>
-                <div class="grid-2">
-                  <div class="field"><label>Предмет</label><select id="lessonTypeSubject"><option>Математика</option><option>Физика</option><option>Химия</option><option>Органическая химия</option><option>Неорганическая химия</option></select></div>
-                  <div class="field"><label>Формат</label><select id="lessonTypeFormat"><option value="online">Онлайн</option><option value="offline">Очно</option><option value="hybrid">Гибрид</option></select></div>
-                </div>
-                <div class="grid-2">
-                  <div class="field"><label>Длительность, минут</label><input id="lessonTypeDuration" type="number" min="15" step="15" value="60" required></div>
-                  <div class="field"><label>Цена, ₽</label><input id="lessonTypePrice" type="number" min="0" step="50" value="2000" required></div>
-                </div>
-                <div class="field"><label>Описание</label><textarea id="lessonTypeDescription" placeholder="Кому подходит и что входит в занятие"></textarea></div>
-                <button class="btn" type="submit">Создать тип занятия</button>
-              </form>
-              <div id="lessonTypesList" class="item-list" style="margin-top:14px;"></div>
-            </div>
-
-            <div class="panel">
-              <h3>Абонементы</h3>
-              <form class="form-grid" id="addSubscriptionForm">
-                <div class="field"><label>Название</label><input id="subscriptionTitle" required placeholder="Абонемент на 8 занятий"></div>
-                <div class="grid-2">
-                  <div class="field"><label>Количество занятий</label><input id="subscriptionLessons" type="number" min="1" value="4" required></div>
-                  <div class="field"><label>Скидка, %</label><input id="subscriptionDiscount" type="number" min="0" max="100" value="5" required></div>
-                </div>
-                <div class="field"><label>Срок действия, дней</label><input id="subscriptionValidDays" type="number" min="1" value="30" required></div>
-                <button class="btn" type="submit">Создать абонемент</button>
-              </form>
-              <div id="subscriptionsList" class="item-list" style="margin-top:14px;"></div>
-            </div>
-          </div>
-
-          <div class="grid-2" style="margin-bottom:18px;">
-            <div class="panel">
-              <h3>Выдать / продлить пакет ученику</h3>
-              <form class="form-grid" id="addStudentPackageForm">
-                <div class="field"><label>Ученик</label><select id="packageStudentSelect" required></select></div>
-                <div class="field"><label>Тип занятия</label><select id="packageLessonTypeSelect" required></select></div>
-                <div class="field"><label>Абонемент</label><select id="packageSubscriptionSelect"><option value="">Без абонемента / вручную</option></select></div>
-                <div class="grid-2">
-                  <div class="field"><label>Всего занятий</label><input id="packageLessonsTotal" type="number" min="0" value="4"></div>
-                  <div class="field"><label>Оплачено, ₽</label><input id="packagePaidAmount" type="number" min="0" value="0"></div>
-                </div>
-                <div class="grid-2">
-                  <div class="field"><label>Начало</label><input id="packageStartsAt" type="date"></div>
-                  <div class="field"><label>Действует до</label><input id="packageExpiresAt" type="date"></div>
-                </div>
-                <div class="field"><label>Комментарий</label><textarea id="packageNotes"></textarea></div>
-                <button class="btn" type="submit">Выдать пакет</button>
-              </form>
-              <div id="studentPackagesList" class="item-list" style="margin-top:14px;"></div>
-            </div>
-
-            <div class="panel">
-              <h3>Оплаты</h3>
-              <form class="form-grid" id="addPaymentForm">
-                <div class="field"><label>Ученик</label><select id="paymentStudentSelect" required></select></div>
-                <div class="field"><label>Тип занятия</label><select id="paymentLessonTypeSelect"></select></div>
-                <div class="field"><label>Пакет ученика</label><select id="paymentPackageSelect"><option value="">Не привязывать</option></select></div>
-                <div class="grid-2">
-                  <div class="field"><label>Сумма, ₽</label><input id="paymentAmount" type="number" min="0" value="0" required></div>
-                  <div class="field"><label>Статус</label><select id="paymentStatus"><option value="paid">Оплачено</option><option value="pending">Ожидает</option><option value="cancelled">Отменено</option></select></div>
-                </div>
-                <div class="field"><label>Способ оплаты</label><input id="paymentMethod" placeholder="Перевод, ЮKassa, наличные"></div>
-                <div class="field"><label>Комментарий</label><textarea id="paymentNotes"></textarea></div>
-                <button class="btn" type="submit">Добавить оплату</button>
-              </form>
-              <div id="paymentsList" class="item-list" style="margin-top:14px;"></div>
-            </div>
-          </div>
-
-          <div class="grid-2">
-            <div class="panel">
-              <h3>Добавить ученика</h3>
-              <form class="form-grid" id="addStudentForm">
-                <div class="field"><label>Имя</label><input id="newStudentName" required></div>
-                <div class="field"><label>Email ученика</label><input id="newStudentEmail" type="email" required></div>
-                <div class="field"><label>Предмет / курс</label><input id="newStudentSubject" placeholder="Математика, 9 класс"></div>
-                <div class="field"><label>Яндекс-папка ученика</label><input id="newStudentYandexFolder" placeholder="https://disk.yandex.ru/..."></div>
-                <div class="field"><label>Заметка</label><textarea id="newStudentNotes"></textarea></div>
-                <button class="btn" type="submit">Добавить ученика</button>
-              </form>
-            </div>
-
-            <div class="panel">
-              <h3>Создать тему</h3>
-              <form class="form-grid" id="addTopicForm">
-                <div class="field"><label>Название темы</label><input id="newTopicTitle" required placeholder="Квадратные уравнения"></div>
-                <div class="field"><label>Предмет</label><select id="newTopicSubject"><option>Математика</option><option>Физика</option><option>Химия</option></select></div>
-                <div class="field"><label>Описание</label><textarea id="newTopicDescription"></textarea></div>
-                <button class="btn" type="submit">Создать тему</button>
-              </form>
-            </div>
-          </div>
-
-          <div class="grid-2" style="margin-top:18px;">
-            <div class="panel">
-              <h3>Добавить материал</h3>
-              <form class="form-grid" id="addMaterialForm">
-                <div class="field"><label>Тема</label><select id="materialTopicSelect" required></select></div>
-                <div class="field"><label>Для ученика</label><select id="materialStudentSelect"><option value="">Для всех учеников</option></select></div>
-                <div class="field"><label>Название</label><input id="materialTitle" required></div>
-                <div class="field"><label>Ссылка на файл / видео</label><input id="materialUrl" placeholder="https://..."></div>
-                <div class="field"><label>Или загрузить файл</label><input id="materialFile" type="file"><div class="file-hint">PDF, DOCX, изображения, презентации. Файл загрузится в Supabase Storage.</div></div>
-                <div class="field"><label>Описание</label><textarea id="materialDescription"></textarea></div>
-                <button class="btn" type="submit">Добавить материал</button>
-              </form>
-            </div>
-
-            <div class="panel">
-              <h3>Выдать ДЗ</h3>
-              <form class="form-grid" id="addHomeworkForm">
-                <div class="field"><label>Ученик</label><select id="homeworkStudentSelect" required></select></div>
-                <div class="field"><label>Тема</label><select id="homeworkTopicSelect" required></select></div>
-                <div class="field"><label>Название ДЗ</label><input id="homeworkTitle" required></div>
-                <div class="field"><label>Срок</label><input id="homeworkDeadline" type="date"></div>
-                <div class="field"><label>Текст задания</label><textarea id="homeworkDescription" required></textarea></div>
-                <div class="field"><label>Файл к ДЗ</label><input id="homeworkFile" type="file"><div class="file-hint">Можно прикрепить условие, конспект или картинку.</div></div>
-                <button class="btn" type="submit">Выдать ДЗ</button>
-              </form>
-            </div>
-          </div>
-
-          <div class="grid-2" style="margin-top:18px;">
-            <div class="panel">
-              <h3>Создать слот</h3>
-              <form class="form-grid" id="createSlotForm">
-                <div class="field"><label>Тип занятия</label><select id="slotLessonTypeSelect" required></select></div>
-                <div class="grid-2">
-                  <div class="field"><label>Дата</label><input id="slotDate" type="date" required></div>
-                  <div class="field"><label>Время</label><input id="slotTime" type="time" required></div>
-                </div>
-                <div class="grid-2">
-                  <div class="field"><label>Длительность, минут</label><input id="slotDuration" type="number" min="15" step="15" value="60"></div>
-                  <div class="field"><label>Цена, ₽</label><input id="slotPrice" type="number" min="0" step="50" value="2000"></div>
-                </div>
-                <div class="field"><label>Статус</label><select id="slotStatus"><option value="open">Открыт</option><option value="closed">Закрыт</option></select></div>
-
-                <details class="cabinet-detail" style="box-shadow:none;margin:0;">
-                  <summary>Регулярность слота</summary>
-                  <div class="cabinet-detail-body">
-                    <div class="grid-2">
-                      <div class="field">
-                        <label>Повтор</label>
-                        <select id="slotRepeatType">
-                          <option value="none">Не повторять</option>
-                          <option value="weekly">Каждую неделю</option>
-                          <option value="biweekly">Раз в 2 недели</option>
-                          <option value="monthly">Каждый месяц</option>
-                        </select>
-                      </div>
-                      <div class="field">
-                        <label>Количество слотов</label>
-                        <input id="slotRepeatCount" type="number" min="1" max="52" value="1">
-                      </div>
-                    </div>
-                    <div class="field">
-                      <label>Или повторять до даты</label>
-                      <input id="slotRepeatUntil" type="date">
-                    </div>
-                    <div class="file-hint">Например: выберите «каждую неделю» и 12 слотов — система создаст расписание на 12 недель.</div>
-                  </div>
-                </details>
-
-                <button class="btn" type="submit">Создать слот / серию</button>
-              </form>
-            </div>
-
-            <div class="panel">
-              <div class="top-actions">
-                <h3>Календарь слотов преподавателя</h3>
-                <div class="row-actions" style="margin-top:0;">
-                  <button class="btn small soft" id="teacherCalPrev">← Неделя</button>
-                  <button class="btn small soft" id="teacherCalToday">Сегодня</button>
-                  <button class="btn small soft" id="teacherCalNext">Неделя →</button>
-                </div>
-              </div>
-              <div class="notice" style="margin-bottom:12px;">Щёлкните по пустой ячейке календаря, чтобы добавить слот. Внутри занятого слота можно удалить, перенести или отметить проведённым.</div>
-              <div id="teacherCalendarEditor" class="teacher-calendar-editor"></div>
-              <div id="teacherSlots" class="slot-list" style="display:none;"></div>
-            </div>
-          </div>
-
-          <div class="panel" style="margin-top:18px;">
-            <div class="top-actions">
-              <h3>Ученики</h3>
-              <button class="btn small soft" id="refreshTeacherBtn">Обновить данные</button>
-            </div>
-            <div class="search-row">
-              <input id="studentSearch" placeholder="Поиск ученика">
-              <select id="studentFilter"><option value="">Все предметы</option><option>Математика</option><option>Физика</option><option>Химия</option></select>
-            </div>
-            <div class="table-wrap"><table><thead><tr><th>Ученик</th><th>Email</th><th>Курс</th><th>ДЗ</th><th>Действия</th></tr></thead><tbody id="studentsTable"></tbody></table></div>
-          </div>
-
-          <div class="grid-2" style="margin-top:18px;">
-            <div class="panel">
-              <h3>Домашние задания</h3>
-              <div id="teacherHomeworkList" class="item-list"></div>
-            </div>
-
-          <div class="panel" style="margin-top:18px;">
-            <h3>Присланные Проверка ДЗ</h3>
-            <div id="teacherSubmittedHomeworkList" class="item-list"></div>
-          </div>
-
-            <div class="panel">
-              <h3>Запросы учеников</h3>
-              <div id="teacherRequests" class="item-list"></div>
-              <h3 style="margin-top:18px;">Заявки на занятия</h3>
-              <div id="teacherBookingRequests" class="item-list"></div>
-            </div>
-          </div>
-
-          <div class="grid-2" style="margin-top:18px;">
-            <div class="panel">
-              <h3>Журнал занятия</h3>
-              <form class="form-grid" id="addLessonLogForm">
-                <div class="field"><label>Слот / занятие</label><select id="logSlotSelect" required></select></div>
-                <div class="field"><label>Ученик</label><select id="logStudentSelect" required></select></div>
-                <div class="field"><label>Тема занятия</label><input id="logTopicTitle" required placeholder="Что проходили"></div>
-                <div class="field"><label>Что сделали</label><textarea id="logSummary" required></textarea></div>
-                <div class="field"><label>Что повторить</label><textarea id="logNextSteps"></textarea></div>
-                <div class="field"><label>Комментарий для ученика/родителя</label><textarea id="logComment"></textarea></div>
-                <button class="btn" type="submit">Добавить запись в журнал</button>
-              </form>
-            </div>
-            <div class="panel">
-              <div class="top-actions">
-                <h3>Последние записи журнала</h3>
-                <button class="btn small soft" id="refreshLogsBtn">Обновить</button>
-              </div>
-              <div id="lessonLogsList" class="item-list"></div>
-            </div>
+            <div class="panel link-card" data-page="teacherNotifications"><div class="card-icon"><i class="fa-solid fa-bell"></i></div><h3>Уведомления</h3><p class="muted">Запросы учеников, ДЗ на проверке, заявки и оплаты.</p></div>
+            <div class="panel link-card" data-page="teacherStudents"><div class="card-icon"><i class="fa-solid fa-users"></i></div><h3>Ученики</h3><p class="muted">Создание доступов, пароли, Яндекс-папки и карточки учеников.</p></div>
+            <div class="panel link-card" data-page="teacherSchedule"><div class="card-icon"><i class="fa-solid fa-calendar-days"></i></div><h3>Расписание</h3><p class="muted">Слоты, переносы, подтверждение и статусы занятий.</p></div>
+            <div class="panel link-card" data-page="teacherHomework"><div class="card-icon"><i class="fa-solid fa-clipboard-check"></i></div><h3>Домашние задания</h3><p class="muted">Выдача заданий и контроль выполнения.</p></div>
+            <div class="panel link-card" data-page="teacherHomeworkReview"><div class="card-icon"><i class="fa-solid fa-file-circle-check"></i></div><h3>Проверка ДЗ</h3><p class="muted">Ответы учеников, оценка и комментарии.</p></div>
+            <div class="panel link-card" data-page="teacherMaterials"><div class="card-icon"><i class="fa-solid fa-book"></i></div><h3>Материалы</h3><p class="muted">Темы, ссылки, файлы и личные Яндекс-папки.</p></div>
+            <div class="panel link-card" data-page="teacherFinance"><div class="card-icon"><i class="fa-solid fa-wallet"></i></div><h3>Финансы</h3><p class="muted">Типы занятий, абонементы и пакеты.</p></div>
+            <div class="panel link-card" data-page="teacherPayments"><div class="card-icon"><i class="fa-solid fa-receipt"></i></div><h3>Оплаты</h3><p class="muted">Добавление оплат, статусы и история.</p></div>
+            <div class="panel link-card" data-page="teacherContent"><div class="card-icon"><i class="fa-solid fa-star"></i></div><h3>Отзывы и кейсы</h3><p class="muted">Публичный контент для повышения конверсии.</p></div>
           </div>
         </section>
-
 
         <section class="page" id="page-teacherNotifications">
           <div class="section-head"><span class="eyebrow">Центр уведомлений</span><h2>Запросы и сообщения учеников</h2><p>Здесь собираются переносы, вопросы, новые заявки, присланные ДЗ и важные действия учеников.</p></div>
@@ -5508,7 +5275,7 @@ body.is-logged .profile-only{display:inline-flex!important;}
         });
       }
       document.body.classList.remove('sidebar-open');
-      if (page === 'schedule') loadPublicSlots();
+      if (page === 'schedule') resetBookingWizard();
       if (page === 'studentCabinet') loadStudentCabinet();
       if (page === 'teacherCabinet') loadTeacherCabinet();
       if (page === 'integrations') loadIntegrations();
@@ -5796,11 +5563,13 @@ body.is-logged .profile-only{display:inline-flex!important;}
 
     window.goToBooking = function(subject) {
       localStorage.setItem('selected_subject', subject);
+      wizardState.subject = subject || 'Математика';
       setPage('schedule');
       setTimeout(() => {
-        const target = document.getElementById('calendarGrid') || document.getElementById('publicSlots');
-        target?.scrollIntoView({ behavior:'smooth', block:'start' });
-        toast(currentLang === 'en' ? `Choose a slot for ${subject}` : `Выберите удобный слот: ${subject}`, 'success');
+        updateWizardChoiceUI('subject', wizardState.subject);
+        setWizardStep(2);
+        document.getElementById('bookingWizard')?.scrollIntoView({ behavior:'smooth', block:'start' });
+        toast(currentLang === 'en' ? `Continue booking for ${subject}` : `Продолжите запись: ${subject}`, 'success');
       }, 80);
     }
 
@@ -6055,19 +5824,62 @@ body.is-logged .profile-only{display:inline-flex!important;}
 
     const wizardState = { subject:'Математика', goal:'', format:'online' };
     let wizardStep = 1;
+    let bookingSlotsLoadedFor = '';
+
+    function updateWizardChoiceUI(field, value) {
+      document.querySelectorAll(`[data-wizard-field="${field}"]`).forEach(el => {
+        el.classList.toggle('active', el.dataset.value === value);
+      });
+    }
+
+    function clearBookingSlotsUI() {
+      const area = $('bookingScheduleArea');
+      const calendar = $('calendarGrid');
+      const list = $('publicSlots');
+      if (area) area.style.display = 'none';
+      if (calendar) calendar.innerHTML = '';
+      if (list) list.innerHTML = '';
+      bookingSlotsLoadedFor = '';
+    }
+
+    window.showBookingSchedule = async function(scroll = false) {
+      const area = $('bookingScheduleArea');
+      if (!area) return;
+      area.style.display = 'block';
+      localStorage.setItem('selected_subject', wizardState.subject || 'Математика');
+      const cacheKey = `${wizardState.subject || ''}|${wizardState.format || ''}`;
+      if (bookingSlotsLoadedFor !== cacheKey) {
+        const list = $('publicSlots');
+        if (list) list.innerHTML = '<div class="empty">Загружаю свободные слоты...</div>';
+        await loadPublicSlots();
+        bookingSlotsLoadedFor = cacheKey;
+      }
+      if (scroll) {
+        setTimeout(() => area.scrollIntoView({ behavior:'smooth', block:'start' }), 50);
+      }
+    }
 
     function setWizardStep(step) {
       wizardStep = Math.max(1, Math.min(5, step));
       document.querySelectorAll('.wizard-step').forEach(el => el.classList.toggle('active', Number(el.dataset.wizardStep) === wizardStep));
       document.querySelectorAll('.wizard-panel').forEach(el => el.classList.toggle('active', Number(el.dataset.wizardPanel) === wizardStep));
+      if (wizardStep < 4) clearBookingSlotsUI();
+      if (wizardStep === 4) showBookingSchedule(false);
+    }
+
+    function resetBookingWizard() {
+      const savedSubject = localStorage.getItem('selected_subject') || wizardState.subject || 'Математика';
+      wizardState.subject = savedSubject;
+      wizardState.goal = wizardState.goal || '';
+      wizardState.format = wizardState.format || 'online';
+      updateWizardChoiceUI('subject', wizardState.subject);
+      updateWizardChoiceUI('format', wizardState.format);
+      clearBookingSlotsUI();
+      setWizardStep(1);
     }
 
     window.wizardNext = function() {
       setWizardStep(wizardStep + 1);
-      if (wizardStep === 4) {
-        localStorage.setItem('selected_subject', wizardState.subject || 'Математика');
-        loadPublicSlots();
-      }
     }
 
     window.wizardPrev = function() {
@@ -6083,6 +5895,10 @@ body.is-logged .profile-only{display:inline-flex!important;}
       choice.classList.add('active');
       if (field === 'subject') {
         localStorage.setItem('selected_subject', choice.dataset.value);
+      }
+      if ((field === 'subject' || field === 'format') && wizardStep >= 4) {
+        bookingSlotsLoadedFor = '';
+        showBookingSchedule(false);
       }
     });
 
@@ -6181,10 +5997,12 @@ body.is-logged .profile-only{display:inline-flex!important;}
 
 
     async function loadPublicSlots() {
-      const { data, error } = await supabaseClient.from('slots').select('*, lesson_types(title, subject, price, duration)').eq('status','open').order('date').order('time');
       const box = $('publicSlots');
+      const calendar = $('calendarGrid');
+      if (!box || !calendar) return;
+      const { data, error } = await supabaseClient.from('slots').select('*, lesson_types(title, subject, price, duration)').eq('status','open').order('date').order('time');
       if (error) { box.innerHTML = `<div class="empty">Не удалось загрузить слоты: ${esc(error.message)}</div>`; return; }
-      const selectedSubject = getSelectedSubject();
+      const selectedSubject = wizardState.subject || getSelectedSubject();
       const filteredSlots = (data || []).filter(slot => !selectedSubject || slot.lesson_types?.subject === selectedSubject || slot.lesson_types?.title?.includes(selectedSubject));
       renderCalendar('calendarGrid', filteredSlots, { publicMode: true });
       if (!filteredSlots?.length) { box.innerHTML = '<div class="empty">Для выбранного предмета пока нет открытых слотов. Можно отправить заявку «согласую с преподавателем».</div>'; return; }
@@ -8249,336 +8067,6 @@ body.is-logged .profile-only{display:inline-flex!important;}
 })();
 
 
-/* ===== PLATFORM PATCH v7: student login by teacher-created username/password + null-safe forms ===== */
-(function(){
-  if (window.__platformPatchV7Ready) return;
-  window.__platformPatchV7Ready = true;
-
-  const $id = (id) => document.getElementById(id);
-  const val = (id, fallback='') => {
-    const el = $id(id);
-    return el && 'value' in el ? el.value : fallback;
-  };
-  const trimVal = (id, fallback='') => String(val(id, fallback) || '').trim();
-  const fileOf = (id) => $id(id)?.files?.[0] || null;
-  const esc3 = (v) => String(v ?? '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
-  const toast3 = (msg, type='success') => typeof window.toast === 'function' ? window.toast(msg, type) : alert(msg);
-  const isAdmin = () => document.body.classList.contains('is-admin');
-
-  async function sha256(text) {
-    const data = new TextEncoder().encode(String(text || ''));
-    const hash = await crypto.subtle.digest('SHA-256', data);
-    return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('');
-  }
-  function normalizeLogin(login) {
-    return String(login || '').trim().toLowerCase().replace(/\s+/g, '_');
-  }
-  function randomPassword(len=8) {
-    const chars = 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789';
-    let out = '';
-    crypto.getRandomValues(new Uint32Array(len)).forEach(n => out += chars[n % chars.length]);
-    return out;
-  }
-  function setAuthMode(mode) {
-    const isStudent = mode !== 'teacher_login';
-    if ($id('authMode')) $id('authMode').value = isStudent ? 'student_login' : 'teacher_login';
-    if ($id('authLoginLabel')) $id('authLoginLabel').textContent = isStudent ? 'Имя ученика' : 'Email преподавателя';
-    if ($id('authEmail')) {
-      $id('authEmail').type = isStudent ? 'text' : 'email';
-      $id('authEmail').placeholder = isStudent ? 'например: ivan_8class' : 'email преподавателя';
-    }
-    if ($id('authSubmitBtn')) $id('authSubmitBtn').textContent = isStudent ? 'Войти в ЛК ученика' : 'Войти как преподаватель';
-    $id('loginTabBtn')?.classList.toggle('active', isStudent);
-    $id('signupTabBtn')?.classList.toggle('active', !isStudent);
-    if ($id('authMessage')) $id('authMessage').textContent = isStudent
-      ? 'Введите имя и пароль, которые выдал преподаватель.'
-      : 'Вход преподавателя выполняется через Supabase Auth.';
-  }
-
-  async function loadStudentById(studentId) {
-    if (!studentId || !window.supabaseClient) return false;
-    const { data, error } = await window.supabaseClient.from('student_profiles').select('*').eq('id', studentId).maybeSingle();
-    if (error || !data) return false;
-    window.state = window.state || {};
-    window.state.studentProfile = data;
-    window.state.user = { id: 'student-local-' + data.id, email: data.email || '', student_local: true };
-    document.body.classList.add('is-logged', 'is-student');
-    document.body.classList.remove('is-admin');
-    if (typeof window.loadStudentData === 'function') await window.loadStudentData();
-    return true;
-  }
-  async function restoreStudentSession() {
-    const studentId = localStorage.getItem('student_session_id');
-    if (!studentId || document.body.classList.contains('is-admin')) return;
-    await loadStudentById(studentId);
-  }
-
-  async function studentLogin(login, password) {
-    login = normalizeLogin(login);
-    if (!login || !password) throw new Error('Введите имя и пароль.');
-    const { data, error } = await window.supabaseClient
-      .from('student_credentials')
-      .select('student_id, login_name, password_hash, is_active')
-      .eq('login_name', login)
-      .maybeSingle();
-    if (error) throw error;
-    if (!data || data.is_active === false) throw new Error('Учётная запись ученика не найдена или отключена.');
-    const hash = await sha256(password);
-    if (hash !== data.password_hash) throw new Error('Неверное имя или пароль.');
-    localStorage.setItem('student_session_id', data.student_id);
-    await loadStudentById(data.student_id);
-    toast3('Вход выполнен', 'success');
-    if (typeof window.setPage === 'function') window.setPage('studentCabinet');
-  }
-
-  // Перехватываем вкладки авторизации, чтобы старая "регистрация по email" больше не мешала.
-  document.addEventListener('click', function(e){
-    if (e.target.closest('#loginTabBtn')) { e.preventDefault(); e.stopImmediatePropagation(); setAuthMode('student_login'); }
-    if (e.target.closest('#signupTabBtn')) { e.preventDefault(); e.stopImmediatePropagation(); setAuthMode('teacher_login'); }
-    if (e.target.closest('#logoutBtn')) { localStorage.removeItem('student_session_id'); }
-  }, true);
-
-  document.addEventListener('submit', async function(e){
-    const f = e.target;
-    if (!f || f.id !== 'authForm') return;
-    e.preventDefault();
-    e.stopImmediatePropagation();
-    const mode = val('authMode', 'student_login');
-    if ($id('authMessage')) $id('authMessage').textContent = '';
-    try {
-      if (mode === 'teacher_login') {
-        const email = trimVal('authEmail');
-        const password = trimVal('authPassword');
-        const { error } = await window.supabaseClient.auth.signInWithPassword({ email, password });
-        if (error) throw error;
-        localStorage.removeItem('student_session_id');
-        if (typeof window.initAuth === 'function') await window.initAuth();
-        if (typeof window.setPage === 'function') window.setPage('teacherCabinet');
-        return;
-      }
-      await studentLogin(trimVal('authEmail'), trimVal('authPassword'));
-    } catch(err) {
-      toast3('Ошибка входа: ' + (err.message || err), 'error');
-    }
-  }, true);
-
-  // Null-safe обработчики старых форм, чтобы больше не было Cannot read properties of null (reading 'value').
-  document.addEventListener('submit', async function(e){
-    const f = e.target;
-    if (!f || !['addMaterialForm','addStudentForm','addTopicForm','addHomeworkForm'].includes(f.id)) return;
-    e.preventDefault();
-    e.stopImmediatePropagation();
-    try {
-      if (f.id === 'addStudentForm') {
-        const row = {
-          name: trimVal('newStudentName'),
-          email: trimVal('newStudentEmail'),
-          subject: trimVal('newStudentSubject'),
-          yandex_folder_url: trimVal('newStudentYandexFolder') || null,
-          notes: trimVal('newStudentNotes')
-        };
-        const { error } = await window.supabaseClient.from('student_profiles').insert(row);
-        if (error) throw error;
-        toast3('Ученик добавлен');
-        f.reset();
-        if (typeof window.loadTeacherCabinet === 'function') await window.loadTeacherCabinet();
-        return;
-      }
-      if (f.id === 'addTopicForm') {
-        const row = { title: trimVal('newTopicTitle'), subject: trimVal('newTopicSubject'), description: trimVal('newTopicDescription') };
-        const { error } = await window.supabaseClient.from('topics').insert(row);
-        if (error) throw error;
-        toast3('Тема создана'); f.reset(); if (typeof window.loadTeacherCabinet === 'function') await window.loadTeacherCabinet(); return;
-      }
-      if (f.id === 'addMaterialForm') {
-        let fileUrl = trimVal('materialUrl') || trimVal('materialFileUrl') || trimVal('cloudMaterialUrl');
-        const file = fileOf('materialFile');
-        if (file && typeof window.uploadFileToStorage === 'function') fileUrl = await window.uploadFileToStorage(file, 'materials');
-        const row = {
-          topic_id: val('materialTopicSelect') || null,
-          student_id: val('materialStudentSelect') || null,
-          title: trimVal('materialTitle') || trimVal('cloudMaterialTitle') || 'Материал',
-          file_url: fileUrl,
-          description: trimVal('materialDescription')
-        };
-        const { error } = await window.supabaseClient.from('materials').insert(row);
-        if (error) throw error;
-        toast3('Материал сохранён'); f.reset(); if (typeof window.loadTeacherCabinet === 'function') await window.loadTeacherCabinet(); return;
-      }
-      if (f.id === 'addHomeworkForm') {
-        let homeworkFileUrl = '';
-        const file = fileOf('homeworkFile');
-        if (file && typeof window.uploadFileToStorage === 'function') homeworkFileUrl = await window.uploadFileToStorage(file, 'homework');
-        const row = {
-          student_id: val('homeworkStudentSelect'),
-          topic_id: val('homeworkTopicSelect') || null,
-          title: trimVal('homeworkTitle'),
-          description: trimVal('homeworkDescription'),
-          deadline: val('homeworkDeadline') || null,
-          file_url: homeworkFileUrl,
-          is_done: false
-        };
-        const { error } = await window.supabaseClient.from('homework').insert(row);
-        if (error) throw error;
-        toast3('ДЗ выдано'); f.reset(); if (typeof window.loadTeacherCabinet === 'function') await window.loadTeacherCabinet(); return;
-      }
-    } catch(err) {
-      toast3('Ошибка сохранения: ' + (err.message || err), 'error');
-    }
-  }, true);
-
-  const oldRenderStudents = window.renderTeacherStudentsFunctional;
-  window.renderTeacherStudentsFunctional = async function(){
-    if (typeof window.ensureTeacherData === 'function') await window.ensureTeacherData();
-    else if (typeof oldRenderStudents === 'function') await oldRenderStudents();
-    const mount = document.getElementById('teacherStudentsMount');
-    if (!mount) return;
-    const students = window.state?.students || [];
-    mount.innerHTML = `
-      <div class="teacher-tool-grid">
-        <div class="panel">
-          <h3>Создать ученика и вход</h3>
-          <p class="muted">Вы задаёте имя входа и пароль. Ученик входит без email — по этим данным.</p>
-          <form class="form-grid" id="v7AddStudentLoginForm">
-            <div class="field"><label>Имя ученика</label><input id="v7StudentName" required placeholder="Иван Петров"></div>
-            <div class="grid-2">
-              <div class="field"><label>Имя для входа</label><input id="v7StudentLogin" required placeholder="ivan_8class"></div>
-              <div class="field"><label>Пароль</label><input id="v7StudentPassword" required placeholder="можно сгенерировать"></div>
-            </div>
-            <button class="btn small soft" type="button" id="v7GeneratePassword">Сгенерировать пароль</button>
-            <div class="field"><label>Email родителя/ученика, необязательно</label><input id="v7StudentEmail" type="email" placeholder="для связи, не для входа"></div>
-            <div class="field"><label>Курс / предмет</label><input id="v7StudentSubject" placeholder="Математика, 8 класс"></div>
-            <div class="field"><label>Telegram</label><input id="v7StudentTelegram" placeholder="@username"></div>
-            <div class="field"><label>Личная Яндекс-папка</label><input id="v7StudentYandex" placeholder="https://disk.yandex.ru/..."></div>
-            <div class="field"><label>Заметки</label><textarea id="v7StudentNotes"></textarea></div>
-            <button class="btn" type="submit">Создать доступ ученику</button>
-          </form>
-        </div>
-        <div class="panel">
-          <div class="top-actions"><h3>Ученики и доступы</h3><button class="btn small soft" id="v7RefreshStudents">Обновить</button></div>
-          <div class="search-row"><input id="v7StudentSearch" placeholder="Поиск по имени, логину, предмету"><select id="v7StudentSubjectFilter"><option value="">Все предметы</option><option>Математика</option><option>Физика</option><option>Химия</option></select></div>
-          <div class="item-list" id="v7StudentsList"></div>
-        </div>
-      </div>`;
-    async function loadCreds(){
-      const ids = students.map(s => s.id).filter(Boolean);
-      if (!ids.length) return [];
-      const { data } = await window.supabaseClient.from('student_credentials').select('student_id, login_name, is_active, updated_at').in('student_id', ids);
-      return data || [];
-    }
-    const creds = await loadCreds();
-    const credByStudent = Object.fromEntries(creds.map(c => [c.student_id, c]));
-    const renderList = () => {
-      const q = trimVal('v7StudentSearch').toLowerCase();
-      const subj = val('v7StudentSubjectFilter');
-      const filtered = students.filter(s => {
-        const c = credByStudent[s.id] || {};
-        const hay = `${s.name||''} ${s.email||''} ${s.subject||''} ${c.login_name||''}`.toLowerCase();
-        return (!q || hay.includes(q)) && (!subj || String(s.subject||'').includes(subj));
-      });
-      const list = $id('v7StudentsList');
-      if (!list) return;
-      list.innerHTML = filtered.map(s => {
-        const c = credByStudent[s.id];
-        return `<article class="learning-item">
-          <div class="top"><strong>${esc3(s.name)}</strong><span class="topic-chip">${esc3(s.subject || 'курс не указан')}</span></div>
-          <p class="muted">${s.email ? esc3(s.email) + ' · ' : ''}${s.telegram ? esc3(s.telegram) + ' · ' : ''}логин: <strong>${esc3(c?.login_name || 'не создан')}</strong></p>
-          ${s.yandex_folder_url ? `<p class="muted">Материалы: Яндекс.Диск</p><a class="btn small soft" target="_blank" rel="noopener" href="${esc3(s.yandex_folder_url)}">Открыть папку</a>` : '<p class="muted">Яндекс-папка не указана</p>'}
-          <div class="row-actions">
-            <button class="btn small soft" data-v7-reset-pass="${s.id}">Новый пароль</button>
-            <button class="btn small soft" data-v7-edit-student="${s.id}">Изменить</button>
-            <button class="btn small red" data-v7-delete-student="${s.id}">Удалить</button>
-          </div>
-        </article>`;
-      }).join('') || '<div class="empty">Пока нет учеников</div>';
-    };
-    renderList();
-    $id('v7GeneratePassword')?.addEventListener('click', () => { if ($id('v7StudentPassword')) $id('v7StudentPassword').value = randomPassword(10); });
-    $id('v7StudentSearch')?.addEventListener('input', renderList);
-    $id('v7StudentSubjectFilter')?.addEventListener('change', renderList);
-    $id('v7RefreshStudents')?.addEventListener('click', () => typeof window.safeRefresh === 'function' ? window.safeRefresh('teacherStudents') : location.reload());
-  };
-
-  document.addEventListener('submit', async function(e){
-    const f = e.target;
-    if (!f || f.id !== 'v7AddStudentLoginForm') return;
-    e.preventDefault();
-    e.stopImmediatePropagation();
-    try {
-      const login = normalizeLogin(trimVal('v7StudentLogin'));
-      const pass = trimVal('v7StudentPassword');
-      if (!login || !pass) throw new Error('Укажите имя входа и пароль.');
-      const email = trimVal('v7StudentEmail') || `${login}@student.local`;
-      const { error: rpcError } = await window.supabaseClient.rpc('teacher_create_student_access', {
-        p_name: trimVal('v7StudentName'),
-        p_login_name: login,
-        p_password_hash: await sha256(pass),
-        p_email: email,
-        p_subject: trimVal('v7StudentSubject'),
-        p_telegram: trimVal('v7StudentTelegram'),
-        p_yandex_folder_url: trimVal('v7StudentYandex') || null,
-        p_notes: trimVal('v7StudentNotes')
-      });
-      if (rpcError) throw rpcError;
-      toast3(`Доступ создан. Логин: ${login} · пароль: ${pass}`, 'success');
-      f.reset();
-      if (typeof window.safeRefresh === 'function') await window.safeRefresh('teacherStudents');
-      else if (typeof window.loadTeacherCabinet === 'function') await window.loadTeacherCabinet();
-    } catch(err) {
-      toast3('Не удалось создать доступ: ' + (err.message || err), 'error');
-    }
-  }, true);
-
-  document.addEventListener('click', async function(e){
-    const reset = e.target.closest('[data-v7-reset-pass]');
-    if (reset) {
-      e.preventDefault();
-      const id = reset.dataset.v7ResetPass;
-      const pass = prompt('Новый пароль для ученика', randomPassword(10));
-      if (!pass) return;
-      const { error } = await window.supabaseClient.rpc('teacher_reset_student_password', { p_student_id: id, p_password_hash: await sha256(pass) });
-      if (error) return toast3(error.message, 'error');
-      toast3('Новый пароль: ' + pass, 'success');
-      return;
-    }
-    const edit = e.target.closest('[data-v7-edit-student]');
-    if (edit) {
-      e.preventDefault();
-      const id = edit.dataset.v7EditStudent;
-      const s = (window.state?.students || []).find(x => x.id === id);
-      if (!s) return;
-      const name = prompt('Имя ученика', s.name || ''); if (name === null) return;
-      const subject = prompt('Предмет / курс', s.subject || '') ?? (s.subject || '');
-      const telegram = prompt('Telegram', s.telegram || '') ?? (s.telegram || '');
-      const yandex_folder_url = prompt('Ссылка на Яндекс-папку ученика', s.yandex_folder_url || '') ?? (s.yandex_folder_url || '');
-      const { error } = await window.supabaseClient.from('student_profiles').update({ name, subject, telegram, yandex_folder_url }).eq('id', id);
-      if (error) return toast3(error.message, 'error');
-      toast3('Карточка ученика обновлена');
-      if (typeof window.safeRefresh === 'function') await window.safeRefresh('teacherStudents');
-      return;
-    }
-    const del = e.target.closest('[data-v7-delete-student]');
-    if (del) {
-      e.preventDefault();
-      if (!confirm('Удалить ученика и его логин?')) return;
-      await window.supabaseClient.from('student_credentials').delete().eq('student_id', del.dataset.v7DeleteStudent);
-      const { error } = await window.supabaseClient.from('student_profiles').delete().eq('id', del.dataset.v7DeleteStudent);
-      if (error) return toast3(error.message, 'error');
-      toast3('Ученик удалён');
-      if (typeof window.safeRefresh === 'function') await window.safeRefresh('teacherStudents');
-      return;
-    }
-  }, true);
-
-  // Экспорт и первичная настройка.
-  window.studentLoginByName = studentLogin;
-  window.restoreStudentSession = restoreStudentSession;
-  window.safeRefresh = window.safeRefresh || (async function(page){ if (typeof window.loadTeacherCabinet === 'function') await window.loadTeacherCabinet(); if (page && typeof window.renderTeacherPage === 'function') await window.renderTeacherPage(page); });
-  setAuthMode('student_login');
-  restoreStudentSession().catch(console.warn);
-})();
-
-
 /* ===== PLATFORM PATCH v8: instant updates, restore current page, safer student access RPCs ===== */
 (function(){
   if (window.__platformPatchV8Ready) return;
@@ -9141,6 +8629,407 @@ body.is-logged .profile-only{display:inline-flex!important;}
 
   updateProfileButton();
   setTimeout(updateNotificationBadge, 2000);
+})();
+</script>
+
+<script>
+/* ===== PLATFORM PATCH v11: cleanup legacy duplicates + stable student auth ===== */
+(function(){
+  if (window.__platformPatchV11Ready) return;
+  window.__platformPatchV11Ready = true;
+
+  const $ = (id) => document.getElementById(id);
+  const toast = (msg, type='info') => typeof window.toast === 'function' ? window.toast(msg, type) : alert(msg);
+  const trim = (id) => String($(id)?.value || '').trim();
+
+  function setStudentAuthMode(){
+    if ($('authMode')) $('authMode').value = 'student_login';
+    if ($('authLoginLabel')) $('authLoginLabel').textContent = 'Имя ученика';
+    if ($('authEmail')) { $('authEmail').type = 'text'; $('authEmail').placeholder = 'например: ivan_8class'; }
+    if ($('authSubmitBtn')) $('authSubmitBtn').textContent = 'Войти в ЛК ученика';
+    $('loginTabBtn')?.classList.add('active');
+    $('signupTabBtn')?.classList.remove('active');
+    if ($('authMessage')) $('authMessage').textContent = 'Введите имя и пароль, которые выдал преподаватель.';
+  }
+  function setTeacherAuthMode(){
+    if ($('authMode')) $('authMode').value = 'teacher_login';
+    if ($('authLoginLabel')) $('authLoginLabel').textContent = 'Email преподавателя';
+    if ($('authEmail')) { $('authEmail').type = 'email'; $('authEmail').placeholder = 'email преподавателя'; }
+    if ($('authSubmitBtn')) $('authSubmitBtn').textContent = 'Войти как преподаватель';
+    $('signupTabBtn')?.classList.add('active');
+    $('loginTabBtn')?.classList.remove('active');
+    if ($('authMessage')) $('authMessage').textContent = 'Вход преподавателя выполняется по email и паролю Supabase.';
+  }
+
+  async function loadStudentById(studentId){
+    if (!studentId || !window.supabaseClient) return false;
+    const { data, error } = await window.supabaseClient.from('student_profiles').select('*').eq('id', studentId).maybeSingle();
+    if (error || !data) return false;
+    window.state = window.state || {};
+    window.state.studentProfile = data;
+    window.state.user = { id: 'student-local-' + data.id, email: data.email || '', student_local: true };
+    document.body.classList.add('is-logged','is-student');
+    document.body.classList.remove('is-admin','is-parent');
+    if (typeof window.loadStudentData === 'function') await window.loadStudentData();
+    return true;
+  }
+  window.restoreStudentSession = async function(){
+    const studentId = localStorage.getItem('student_session_id');
+    if (!studentId || document.body.classList.contains('is-admin')) return false;
+    return await loadStudentById(studentId);
+  };
+
+  document.addEventListener('click', function(e){
+    if (e.target.closest('#loginTabBtn')) { e.preventDefault(); e.stopImmediatePropagation(); setStudentAuthMode(); }
+    if (e.target.closest('#signupTabBtn')) { e.preventDefault(); e.stopImmediatePropagation(); setTeacherAuthMode(); }
+    if (e.target.closest('#logoutBtn')) localStorage.removeItem('student_session_id');
+  }, true);
+
+  document.addEventListener('submit', async function(e){
+    const form = e.target;
+    if (!form || form.id !== 'authForm') return;
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    try {
+      const mode = $('authMode')?.value || 'student_login';
+      if (mode === 'teacher_login') {
+        const { error } = await window.supabaseClient.auth.signInWithPassword({ email: trim('authEmail'), password: trim('authPassword') });
+        if (error) throw error;
+        localStorage.removeItem('student_session_id');
+        if (typeof window.initAuth === 'function') await window.initAuth();
+        location.assign('/teacher');
+        return;
+      }
+      if (typeof window.studentLoginByName !== 'function') throw new Error('Функция входа ученика ещё не загрузилась. Обновите страницу.');
+      await window.studentLoginByName(trim('authEmail'), trim('authPassword'));
+    } catch(err) {
+      toast('Ошибка входа: ' + (err.message || err), 'error');
+    }
+  }, true);
+
+  // На странице обзора не должно быть старых форм: они удалены из HTML, а этот слой страхует старый кэш браузера.
+  const legacySelectors = ['#addStudentForm', '#addTopicForm', '#addMaterialForm', '#addHomeworkForm', '#createSlotForm', '#addPaymentForm', '#addStudentPackageForm'];
+  function removeLegacyTeacherCabinetForms(){
+    const teacher = $('page-teacherCabinet');
+    if (!teacher) return;
+    legacySelectors.forEach(sel => teacher.querySelector(sel)?.closest('.panel')?.remove());
+  }
+  document.addEventListener('DOMContentLoaded', () => { setStudentAuthMode(); removeLegacyTeacherCabinetForms(); });
+  setTimeout(() => { setStudentAuthMode(); removeLegacyTeacherCabinetForms(); window.restoreStudentSession?.(); }, 400);
+})();
+</script>
+
+
+
+<script>
+/* ===== PLATFORM PATCH v13: заявка -> потенциально занят, расширенные заявки, безопасные формы ===== */
+(function(){
+  if (window.__platformPatchV13Ready) return;
+  window.__platformPatchV13Ready = true;
+
+  const $ = (id) => document.getElementById(id);
+  const val = (id, fallback='') => { const el = $(id); return el && 'value' in el ? String(el.value ?? '').trim() : fallback; };
+  const setVal = (id, value='') => { const el = $(id); if (el && 'value' in el) el.value = value ?? ''; };
+  const esc = (v) => String(v ?? '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
+  const toast = (m,t='info') => typeof window.toast === 'function' ? window.toast(m,t) : console.log(m);
+  const supa = () => window.supabaseClient;
+  const st = () => window.state || {};
+  const fmtDate = (d) => { try { return d ? new Date(String(d).includes('T') ? d : d + 'T00:00:00').toLocaleDateString('ru-RU',{day:'2-digit',month:'short',weekday:'short'}) : '—'; } catch { return d || '—'; } };
+  const human = (status) => ({ pending:'Ожидает подтверждения', approved:'Одобрено', rejected:'Отклонено', open:'Свободно', booked:'Забронировано', confirmed:'Подтверждено', completed:'Проведено', cancelled:'Отменено', rescheduled:'Перенесено' }[status] || status || '—');
+
+  // Не показываем бесконечные красные тосты от старых обработчиков, если старого поля уже нет.
+  window.addEventListener('error', (event) => {
+    const msg = String(event.message || '');
+    if (msg.includes("Cannot read properties of null") && msg.includes("value")) {
+      event.preventDefault();
+      console.warn('Legacy null-value handler skipped:', msg);
+    }
+  }, true);
+  window.addEventListener('unhandledrejection', (event) => {
+    const msg = String(event.reason?.message || event.reason || '');
+    if (msg.includes("Cannot read properties of null") && msg.includes("value")) {
+      event.preventDefault();
+      console.warn('Legacy null-value promise skipped:', msg);
+    }
+  }, true);
+
+  async function refreshTeacher(page) {
+    try {
+      if (typeof window.loadTeacherData === 'function') await window.loadTeacherData();
+      if (page && typeof window.renderTeacherPage === 'function') await window.renderTeacherPage(page);
+      if (typeof window.updateNotificationBadge === 'function') await window.updateNotificationBadge();
+    } catch (e) { console.warn('refreshTeacher skipped', e); }
+  }
+
+  // Публичное расписание: показываем open как свободные, pending как «потенциально занято», confirmed/booked не показываем.
+  window.loadPublicSlots = async function(){
+    const box = $('publicSlots');
+    const calendar = $('calendarGrid');
+    if (!box || !calendar || !supa()) return;
+
+    box.innerHTML = '<div class="empty">Загружаю расписание...</div>';
+    const { data, error } = await supa()
+      .from('slots')
+      .select('*, lesson_types(title, subject, price, duration)')
+      .in('status', ['open','pending'])
+      .order('date')
+      .order('time');
+
+    if (error) {
+      box.innerHTML = `<div class="empty">Не удалось загрузить расписание: ${esc(error.message)}</div>`;
+      return;
+    }
+
+    const selectedSubject = (window.wizardState?.subject) || localStorage.getItem('selected_subject') || 'Математика';
+    const slots = (data || []).filter(slot => !selectedSubject || slot.lesson_types?.subject === selectedSubject || slot.lesson_types?.title?.includes(selectedSubject));
+    const publicSlots = slots.filter(s => s.status === 'open');
+    try { if (typeof window.renderCalendar === 'function') window.renderCalendar('calendarGrid', publicSlots, { publicMode:true }); } catch(e) { console.warn(e); }
+
+    if (!slots.length) {
+      box.innerHTML = '<div class="empty">Для выбранного предмета пока нет открытых слотов. Можно отправить заявку «согласую с преподавателем».</div>';
+      return;
+    }
+
+    box.innerHTML = slots.map(slot => {
+      const isPending = slot.status === 'pending';
+      const price = Number(slot.price || slot.lesson_types?.price || 0).toLocaleString('ru-RU');
+      return `<article class="slot-card ${isPending ? 'pending' : 'open'}">
+        <strong>${fmtDate(slot.date)} · ${esc(slot.time)}</strong>
+        <span class="status ${isPending ? 'pending' : 'open'}">${isPending ? 'Потенциально занят — ждёт подтверждения' : `Свободно · ${esc(slot.duration || slot.lesson_types?.duration || 60)} мин · ${price} ₽`}</span>
+        <p class="muted">${esc(slot.lesson_types?.title || 'Индивидуальное занятие')}</p>
+        ${isPending ? '<button class="btn small soft" disabled>На рассмотрении</button>' : `<button class="btn small" onclick="bookPublicSlot('${slot.id}')">Занять слот</button>`}
+      </article>`;
+    }).join('');
+  };
+
+  // Безопасные открытия модального окна заявки: не требуют авторизации и не падают без старых полей.
+  window.bookPublicSlot = async function(slotId){
+    setVal('bookingSlotId', slotId || '');
+    setVal('bookingName', st().studentProfile?.name || '');
+    setVal('bookingContact', st().user?.email || '');
+    if (typeof window.fillBookingOptions === 'function') await window.fillBookingOptions();
+    const subject = localStorage.getItem('selected_subject') || window.wizardState?.subject || 'Математика';
+    setVal('bookingDirection', subject);
+    const notice = $('bookingNoSlotNotice'); if (notice) notice.style.display = 'none';
+    $('bookingModal')?.classList.add('active');
+  };
+
+  window.bookWithoutSlot = async function(){
+    setVal('bookingSlotId', '');
+    setVal('bookingName', st().studentProfile?.name || '');
+    setVal('bookingContact', st().user?.email || '');
+    if (typeof window.fillBookingOptions === 'function') await window.fillBookingOptions();
+    setVal('bookingDirection', localStorage.getItem('selected_subject') || window.wizardState?.subject || 'Математика');
+    const notice = $('bookingNoSlotNotice'); if (notice) notice.style.display = 'block';
+    $('bookingModal')?.classList.add('active');
+  };
+
+  // Заменяем старый submit у заявки на безопасный: после заявки слот становится pending.
+  function bindSafeBookingForm(){
+    const form = $('bookingForm');
+    if (!form || form.dataset.v13Bound === 'true') return;
+    const clean = form.cloneNode(true);
+    clean.dataset.v13Bound = 'true';
+    form.replaceWith(clean);
+    clean.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!supa()) return toast('Supabase не подключён', 'error');
+      const slotId = val('bookingSlotId');
+      const name = val('bookingName');
+      const contact = val('bookingContact');
+      if (!name || !contact) return toast('Заполните имя и контакт', 'error');
+      const direction = val('bookingDirection', localStorage.getItem('selected_subject') || window.wizardState?.subject || 'Математика');
+      const format = val('bookingFormat', window.wizardState?.format || 'online');
+      const message = [val('bookingMessage'), window.wizardState?.goal ? `Цель: ${window.wizardState.goal}` : ''].filter(Boolean).join('\n');
+
+      if (slotId) {
+        const { data: slot } = await supa().from('slots').select('status').eq('id', slotId).maybeSingle();
+        if (slot && slot.status !== 'open') {
+          toast('Этот слот уже на рассмотрении или занят. Выберите другое время.', 'error');
+          await window.loadPublicSlots?.();
+          return;
+        }
+      }
+
+      const { data: created, error } = await supa().from('booking_requests').insert({
+        slot_id: slotId || null,
+        student_profile_id: st().studentProfile?.id || null,
+        name, contact,
+        email: st().user?.email || null,
+        format, direction, message,
+        status: 'pending'
+      }).select('*').single();
+      if (error) return toast('Не удалось отправить заявку: ' + error.message, 'error');
+
+      if (slotId) {
+        const { error: slotError } = await supa().from('slots').update({
+          status: 'pending',
+          student_name: name,
+          student_contact: contact,
+          student_profile_id: st().studentProfile?.id || null
+        }).eq('id', slotId).eq('status','open');
+        if (slotError) console.warn('slot pending update failed', slotError.message);
+      }
+
+      await supa().from('notification_events').insert({
+        type: 'booking_request_created', channel:'site', status:'pending',
+        payload: { request_id: created?.id, name, contact, slotId, format, direction, message }
+      });
+
+      $('bookingModal')?.classList.remove('active');
+      clean.reset();
+      toast(slotId ? 'Заявка отправлена. Слот временно отмечен как потенциально занятый.' : 'Заявка отправлена. Преподаватель предложит время.', 'success');
+      await window.loadPublicSlots?.();
+      if (document.body.classList.contains('is-admin')) await refreshTeacher('teacherBookings');
+    });
+  }
+  bindSafeBookingForm();
+  setTimeout(bindSafeBookingForm, 700);
+
+  // Одобрение: подтверждённый слот исчезает из публичной записи. Отклонение: pending-слот снова открывается.
+  window.approveBookingRequest = async function(id){
+    if (!supa()) return;
+    const req = (st().bookingRequests || []).find(x => String(x.id) === String(id)) || (await supa().from('booking_requests').select('*').eq('id',id).maybeSingle()).data;
+    if (!req) return toast('Заявка не найдена', 'error');
+
+    if (req.slot_id) {
+      const { error: slotError } = await supa().from('slots').update({
+        status:'confirmed',
+        student_name: req.name || null,
+        student_contact: req.contact || null,
+        student_profile_id: req.student_profile_id || null
+      }).eq('id', req.slot_id);
+      if (slotError) return toast('Не удалось подтвердить слот: ' + slotError.message, 'error');
+    }
+    const { error } = await supa().from('booking_requests').update({ status:'approved' }).eq('id', id);
+    if (error) return toast(error.message, 'error');
+    await supa().from('notification_events').insert({ type:'booking_approved', channel:'site', status:'pending', payload:{ request_id:id, slot_id:req.slot_id, name:req.name, contact:req.contact } });
+    toast('Заявка подтверждена. Слот убран из публичного расписания.', 'success');
+    await refreshTeacher('teacherBookings');
+    await window.loadPublicSlots?.();
+  };
+
+  window.rejectBookingRequest = async function(id){
+    if (!supa()) return;
+    const req = (st().bookingRequests || []).find(x => String(x.id) === String(id)) || (await supa().from('booking_requests').select('*').eq('id',id).maybeSingle()).data;
+    const { error } = await supa().from('booking_requests').update({ status:'rejected' }).eq('id', id);
+    if (error) return toast(error.message, 'error');
+    if (req?.slot_id) {
+      await supa().from('slots').update({ status:'open', student_name:null, student_contact:null, student_profile_id:null }).eq('id', req.slot_id).eq('status','pending');
+    }
+    toast('Заявка отклонена. Слот снова доступен.', 'success');
+    await refreshTeacher('teacherBookings');
+    await window.loadPublicSlots?.();
+  };
+
+  // Карточки заявок в ЛК преподавателя: больше информации + удобные действия.
+  window.renderTeacherBookingsFunctional = async function(){
+    if (typeof window.ensureTeacherData === 'function') await window.ensureTeacherData();
+    else if (typeof window.loadTeacherData === 'function') await window.loadTeacherData();
+    const mount = typeof window.teacherMount === 'function' ? window.teacherMount('teacherBookings') : $('teacherBookingsMount');
+    if (!mount) return;
+    const requests = (st().bookingRequests || []).slice().sort((a,b)=>String(b.created_at||'').localeCompare(String(a.created_at||'')));
+    const pending = requests.filter(r => (r.status || 'pending') === 'pending').length;
+    const approved = requests.filter(r => r.status === 'approved').length;
+    const rejected = requests.filter(r => r.status === 'rejected').length;
+    mount.innerHTML = `<div class="stat-grid" style="margin-bottom:18px">
+      <div class="stat"><strong>${requests.length}</strong><span>всего заявок</span></div>
+      <div class="stat"><strong>${pending}</strong><span>ожидают решения</span></div>
+      <div class="stat"><strong>${approved}</strong><span>подтверждены</span></div>
+      <div class="stat"><strong>${rejected}</strong><span>отклонены</span></div>
+    </div>
+    <div class="panel"><div class="top-actions"><h3>Заявки на занятия</h3><button class="btn small soft" id="v13RefreshBookings">Обновить</button></div>
+      <div class="item-list">${requests.map(r => {
+        const slot = r.slots || (st().slots || []).find(s => String(s.id) === String(r.slot_id));
+        const msg = r.message || '';
+        return `<article class="learning-item request-card request-${esc(r.status || 'pending')}">
+          <div class="top"><strong>${esc(r.name || r.student_profiles?.name || 'Новая заявка')}</strong><span class="status ${esc(r.status || 'pending')}">${human(r.status || 'pending')}</span></div>
+          <div class="request-meta">
+            <span><b>Контакт:</b> ${esc(r.contact || r.email || '—')}</span>
+            <span><b>Направление:</b> ${esc(r.direction || '—')}</span>
+            <span><b>Формат:</b> ${esc(r.format || '—')}</span>
+            <span><b>Создана:</b> ${fmtDate(r.created_at)}</span>
+            <span><b>Слот:</b> ${slot ? `${fmtDate(slot.date)} · ${esc(slot.time)} · ${esc(slot.lesson_types?.title || '')}` : (r.slot_id ? 'слот не найден' : 'без слота')}</span>
+          </div>
+          ${msg ? `<p class="request-message">${esc(msg).replace(/\n/g,'<br>')}</p>` : '<p class="muted">Комментарий не указан.</p>'}
+          <div class="row-actions">
+            ${(r.status || 'pending') === 'pending' ? `<button class="btn small green" data-cloud-approve-booking="${r.id}">Подтвердить</button><button class="btn small red" data-cloud-reject-booking="${r.id}">Отклонить</button>` : ''}
+            ${r.contact ? `<a class="btn small soft" href="${String(r.contact).includes('@') ? 'mailto:' + esc(r.contact) : '#'}" ${String(r.contact).includes('@') ? '' : `onclick="navigator.clipboard?.writeText('${esc(r.contact)}'); toast('Контакт скопирован','success'); return false;"`}>Связаться</a>` : ''}
+            <button class="btn small soft" onclick="navigator.clipboard?.writeText('${esc([r.name,r.contact,r.direction,r.format,msg].filter(Boolean).join(' | '))}'); toast('Заявка скопирована','success')">Скопировать</button>
+          </div>
+        </article>`;
+      }).join('') || '<div class="empty">Заявок пока нет</div>'}</div></div>`;
+    $('v13RefreshBookings')?.addEventListener('click', () => refreshTeacher('teacherBookings'));
+  };
+
+  // Ученические запросы безопасно отправляются и сразу видны преподавателю в уведомлениях.
+  function bindSafeStudentRequestForm(){
+    const form = $('studentRequestForm');
+    if (!form || form.dataset.v13Bound === 'true') return;
+    const clean = form.cloneNode(true);
+    clean.dataset.v13Bound = 'true';
+    form.replaceWith(clean);
+    clean.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const student = st().studentProfile;
+      if (!student) return toast('Войдите в ЛК ученика, чтобы отправить запрос.', 'info');
+      const payload = {
+        student_id: student.id,
+        type: val('studentRequestType','question'),
+        slot_id: val('studentRequestSlot') || null,
+        requested_date: val('studentRequestNewDate') || null,
+        requested_time: val('studentRequestNewTime') || null,
+        message: val('studentRequestMessage'),
+        status:'pending'
+      };
+      if (!payload.message) return toast('Напишите комментарий к запросу', 'error');
+      const { error } = await supa().from('lesson_requests').insert(payload);
+      if (error) return toast(error.message, 'error');
+      await supa().from('notification_events').insert({ type:'student_request_created', channel:'site', status:'pending', payload:{ student:student.name, ...payload } });
+      toast('Запрос отправлен преподавателю.', 'success');
+      clean.reset();
+      if (typeof window.loadStudentCabinet === 'function') await window.loadStudentCabinet();
+      if (document.body.classList.contains('is-admin')) await refreshTeacher('teacherNotifications');
+    });
+  }
+  bindSafeStudentRequestForm();
+  setTimeout(bindSafeStudentRequestForm, 900);
+
+  // При клике по закрытым разделам не «выкидываем» молча на авторизацию.
+  const protectedPages = new Set(['teacherCabinet','teacherStudents','teacherMaterials','teacherHomework','teacherHomeworkReview','teacherSchedule','teacherBookings','teacherNotifications','teacherFinance','teacherPayments','teacherContent','analytics','activityLog','settings']);
+  const prevSetPage = window.setPage;
+  if (typeof prevSetPage === 'function' && !window.__v13SetPageWrapped) {
+    window.__v13SetPageWrapped = true;
+    window.setPage = function(page){
+      if (protectedPages.has(page) && !document.body.classList.contains('is-admin')) {
+        toast('Этот раздел доступен только преподавателю. Вы остались на текущей странице.', 'info');
+        return;
+      }
+      if (page === 'studentCabinet' && !document.body.classList.contains('is-student') && !document.body.classList.contains('is-admin')) {
+        toast('Войдите в ЛК ученика, чтобы открыть профиль.', 'info');
+        return prevSetPage('login');
+      }
+      return prevSetPage(page);
+    };
+  }
+
+  // Realtime: публичное расписание и заявки обновляются без перезагрузки.
+  setTimeout(() => {
+    if (!supa() || window.__v13RealtimeReady) return;
+    window.__v13RealtimeReady = true;
+    try {
+      supa().channel('platform-v13-bookings')
+        .on('postgres_changes',{event:'*',schema:'public',table:'slots'}, async()=>{ if ($('publicSlots')) await window.loadPublicSlots?.(); if (typeof window.loadStudentCabinet === 'function' && document.body.classList.contains('is-student')) await window.loadStudentCabinet(); })
+        .on('postgres_changes',{event:'*',schema:'public',table:'booking_requests'}, async()=>{ if (document.body.classList.contains('is-admin')) { await refreshTeacher('teacherBookings'); if (typeof window.updateNotificationBadge === 'function') await window.updateNotificationBadge(); } })
+        .on('postgres_changes',{event:'*',schema:'public',table:'lesson_requests'}, async()=>{ if (document.body.classList.contains('is-admin') && typeof window.updateNotificationBadge === 'function') await window.updateNotificationBadge(); if (document.body.classList.contains('is-student') && typeof window.loadStudentCabinet === 'function') await window.loadStudentCabinet(); })
+        .subscribe();
+    } catch(e) { console.warn('v13 realtime skipped', e); }
+  }, 1600);
+
+  // Немного стилей для новых карточек, если CSS ещё не обновлён.
+  const style = document.createElement('style');
+  style.textContent = `.slot-card.pending{border-color:#fbbf24;background:#fffbeb}.status.pending{background:#fef3c7;color:#92400e}.request-card{border-left:5px solid #dbeafe}.request-card.request-pending{border-left-color:#f59e0b}.request-card.request-approved{border-left-color:#22c55e}.request-card.request-rejected{border-left-color:#ef4444}.request-meta{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:8px 14px;margin:10px 0;color:#475569}.request-message{background:#f8fafc;border:1px solid #e2e8f0;border-radius:16px;padding:12px}`;
+  document.head.appendChild(style);
 })();
 </script>
 

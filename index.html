@@ -4491,17 +4491,17 @@
             <div class="section-head">
               <div class="kicker"><i class="fa-solid fa-user-lock"></i> Авторизация</div>
               <h2>Вход и регистрация</h2>
-              <p class="muted">Учитель входит как admin. Ученик регистрируется по email, который преподаватель добавил в карточку ученика.</p>
+              <p class="muted">Ученик входит по имени и паролю, которые преподаватель создаёт в ЛК. Преподаватель входит по email и паролю Supabase.</p>
             </div>
             <div class="auth-tabs">
-              <button class="btn soft active" id="loginTabBtn">Вход</button>
-              <button class="btn soft" id="signupTabBtn">Регистрация ученика</button>
+              <button class="btn soft active" id="loginTabBtn">Вход ученика</button>
+              <button class="btn soft" id="signupTabBtn">Вход преподавателя</button>
             </div>
             <form class="form-grid" id="authForm">
-              <input type="hidden" id="authMode" value="login">
-              <div class="field"><label>Email</label><input type="email" id="authEmail" required></div>
+              <input type="hidden" id="authMode" value="student_login">
+              <div class="field"><label id="authLoginLabel">Имя ученика</label><input type="text" id="authEmail" required autocomplete="username"></div>
               <div class="field"><label>Пароль</label><input type="password" id="authPassword" required></div>
-              <button class="btn" type="submit" id="authSubmitBtn">Войти</button>
+              <button class="btn" type="submit" id="authSubmitBtn">Войти в ЛК ученика</button>
             </form>
             <p class="muted" id="authMessage" style="margin-top:14px;"></p>
           </div>
@@ -8109,6 +8109,341 @@
       setTimeout(() => { renderTeacherPage(page); if (page === 'studentCabinet') enrichStudentYandexMaterials(); }, 140);
     };
   }
+})();
+
+
+/* ===== PLATFORM PATCH v7: student login by teacher-created username/password + null-safe forms ===== */
+(function(){
+  if (window.__platformPatchV7Ready) return;
+  window.__platformPatchV7Ready = true;
+
+  const $id = (id) => document.getElementById(id);
+  const val = (id, fallback='') => {
+    const el = $id(id);
+    return el && 'value' in el ? el.value : fallback;
+  };
+  const trimVal = (id, fallback='') => String(val(id, fallback) || '').trim();
+  const fileOf = (id) => $id(id)?.files?.[0] || null;
+  const esc3 = (v) => String(v ?? '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
+  const toast3 = (msg, type='success') => typeof window.toast === 'function' ? window.toast(msg, type) : alert(msg);
+  const isAdmin = () => document.body.classList.contains('is-admin');
+
+  async function sha256(text) {
+    const data = new TextEncoder().encode(String(text || ''));
+    const hash = await crypto.subtle.digest('SHA-256', data);
+    return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('');
+  }
+  function normalizeLogin(login) {
+    return String(login || '').trim().toLowerCase().replace(/\s+/g, '_');
+  }
+  function randomPassword(len=8) {
+    const chars = 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789';
+    let out = '';
+    crypto.getRandomValues(new Uint32Array(len)).forEach(n => out += chars[n % chars.length]);
+    return out;
+  }
+  function setAuthMode(mode) {
+    const isStudent = mode !== 'teacher_login';
+    if ($id('authMode')) $id('authMode').value = isStudent ? 'student_login' : 'teacher_login';
+    if ($id('authLoginLabel')) $id('authLoginLabel').textContent = isStudent ? 'Имя ученика' : 'Email преподавателя';
+    if ($id('authEmail')) {
+      $id('authEmail').type = isStudent ? 'text' : 'email';
+      $id('authEmail').placeholder = isStudent ? 'например: ivan_8class' : 'email преподавателя';
+    }
+    if ($id('authSubmitBtn')) $id('authSubmitBtn').textContent = isStudent ? 'Войти в ЛК ученика' : 'Войти как преподаватель';
+    $id('loginTabBtn')?.classList.toggle('active', isStudent);
+    $id('signupTabBtn')?.classList.toggle('active', !isStudent);
+    if ($id('authMessage')) $id('authMessage').textContent = isStudent
+      ? 'Введите имя и пароль, которые выдал преподаватель.'
+      : 'Вход преподавателя выполняется через Supabase Auth.';
+  }
+
+  async function loadStudentById(studentId) {
+    if (!studentId || !window.supabaseClient) return false;
+    const { data, error } = await window.supabaseClient.from('student_profiles').select('*').eq('id', studentId).maybeSingle();
+    if (error || !data) return false;
+    window.state = window.state || {};
+    window.state.studentProfile = data;
+    window.state.user = { id: 'student-local-' + data.id, email: data.email || '', student_local: true };
+    document.body.classList.add('is-logged', 'is-student');
+    document.body.classList.remove('is-admin');
+    if (typeof window.loadStudentData === 'function') await window.loadStudentData();
+    return true;
+  }
+  async function restoreStudentSession() {
+    const studentId = localStorage.getItem('student_session_id');
+    if (!studentId || document.body.classList.contains('is-admin')) return;
+    await loadStudentById(studentId);
+  }
+
+  async function studentLogin(login, password) {
+    login = normalizeLogin(login);
+    if (!login || !password) throw new Error('Введите имя и пароль.');
+    const { data, error } = await window.supabaseClient
+      .from('student_credentials')
+      .select('student_id, login_name, password_hash, is_active')
+      .eq('login_name', login)
+      .maybeSingle();
+    if (error) throw error;
+    if (!data || data.is_active === false) throw new Error('Учётная запись ученика не найдена или отключена.');
+    const hash = await sha256(password);
+    if (hash !== data.password_hash) throw new Error('Неверное имя или пароль.');
+    localStorage.setItem('student_session_id', data.student_id);
+    await loadStudentById(data.student_id);
+    toast3('Вход выполнен', 'success');
+    if (typeof window.setPage === 'function') window.setPage('studentCabinet');
+  }
+
+  // Перехватываем вкладки авторизации, чтобы старая "регистрация по email" больше не мешала.
+  document.addEventListener('click', function(e){
+    if (e.target.closest('#loginTabBtn')) { e.preventDefault(); e.stopImmediatePropagation(); setAuthMode('student_login'); }
+    if (e.target.closest('#signupTabBtn')) { e.preventDefault(); e.stopImmediatePropagation(); setAuthMode('teacher_login'); }
+    if (e.target.closest('#logoutBtn')) { localStorage.removeItem('student_session_id'); }
+  }, true);
+
+  document.addEventListener('submit', async function(e){
+    const f = e.target;
+    if (!f || f.id !== 'authForm') return;
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    const mode = val('authMode', 'student_login');
+    if ($id('authMessage')) $id('authMessage').textContent = '';
+    try {
+      if (mode === 'teacher_login') {
+        const email = trimVal('authEmail');
+        const password = trimVal('authPassword');
+        const { error } = await window.supabaseClient.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+        localStorage.removeItem('student_session_id');
+        if (typeof window.initAuth === 'function') await window.initAuth();
+        if (typeof window.setPage === 'function') window.setPage('teacherCabinet');
+        return;
+      }
+      await studentLogin(trimVal('authEmail'), trimVal('authPassword'));
+    } catch(err) {
+      toast3('Ошибка входа: ' + (err.message || err), 'error');
+    }
+  }, true);
+
+  // Null-safe обработчики старых форм, чтобы больше не было Cannot read properties of null (reading 'value').
+  document.addEventListener('submit', async function(e){
+    const f = e.target;
+    if (!f || !['addMaterialForm','addStudentForm','addTopicForm','addHomeworkForm'].includes(f.id)) return;
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    try {
+      if (f.id === 'addStudentForm') {
+        const row = {
+          name: trimVal('newStudentName'),
+          email: trimVal('newStudentEmail'),
+          subject: trimVal('newStudentSubject'),
+          yandex_folder_url: trimVal('newStudentYandexFolder') || null,
+          notes: trimVal('newStudentNotes')
+        };
+        const { error } = await window.supabaseClient.from('student_profiles').insert(row);
+        if (error) throw error;
+        toast3('Ученик добавлен');
+        f.reset();
+        if (typeof window.loadTeacherCabinet === 'function') await window.loadTeacherCabinet();
+        return;
+      }
+      if (f.id === 'addTopicForm') {
+        const row = { title: trimVal('newTopicTitle'), subject: trimVal('newTopicSubject'), description: trimVal('newTopicDescription') };
+        const { error } = await window.supabaseClient.from('topics').insert(row);
+        if (error) throw error;
+        toast3('Тема создана'); f.reset(); if (typeof window.loadTeacherCabinet === 'function') await window.loadTeacherCabinet(); return;
+      }
+      if (f.id === 'addMaterialForm') {
+        let fileUrl = trimVal('materialUrl') || trimVal('materialFileUrl') || trimVal('cloudMaterialUrl');
+        const file = fileOf('materialFile');
+        if (file && typeof window.uploadFileToStorage === 'function') fileUrl = await window.uploadFileToStorage(file, 'materials');
+        const row = {
+          topic_id: val('materialTopicSelect') || null,
+          student_id: val('materialStudentSelect') || null,
+          title: trimVal('materialTitle') || trimVal('cloudMaterialTitle') || 'Материал',
+          file_url: fileUrl,
+          description: trimVal('materialDescription')
+        };
+        const { error } = await window.supabaseClient.from('materials').insert(row);
+        if (error) throw error;
+        toast3('Материал сохранён'); f.reset(); if (typeof window.loadTeacherCabinet === 'function') await window.loadTeacherCabinet(); return;
+      }
+      if (f.id === 'addHomeworkForm') {
+        let homeworkFileUrl = '';
+        const file = fileOf('homeworkFile');
+        if (file && typeof window.uploadFileToStorage === 'function') homeworkFileUrl = await window.uploadFileToStorage(file, 'homework');
+        const row = {
+          student_id: val('homeworkStudentSelect'),
+          topic_id: val('homeworkTopicSelect') || null,
+          title: trimVal('homeworkTitle'),
+          description: trimVal('homeworkDescription'),
+          deadline: val('homeworkDeadline') || null,
+          file_url: homeworkFileUrl,
+          is_done: false
+        };
+        const { error } = await window.supabaseClient.from('homework').insert(row);
+        if (error) throw error;
+        toast3('ДЗ выдано'); f.reset(); if (typeof window.loadTeacherCabinet === 'function') await window.loadTeacherCabinet(); return;
+      }
+    } catch(err) {
+      toast3('Ошибка сохранения: ' + (err.message || err), 'error');
+    }
+  }, true);
+
+  const oldRenderStudents = window.renderTeacherStudentsFunctional;
+  window.renderTeacherStudentsFunctional = async function(){
+    if (typeof window.ensureTeacherData === 'function') await window.ensureTeacherData();
+    else if (typeof oldRenderStudents === 'function') await oldRenderStudents();
+    const mount = document.getElementById('teacherStudentsMount');
+    if (!mount) return;
+    const students = window.state?.students || [];
+    mount.innerHTML = `
+      <div class="teacher-tool-grid">
+        <div class="panel">
+          <h3>Создать ученика и вход</h3>
+          <p class="muted">Вы задаёте имя входа и пароль. Ученик входит без email — по этим данным.</p>
+          <form class="form-grid" id="v7AddStudentLoginForm">
+            <div class="field"><label>Имя ученика</label><input id="v7StudentName" required placeholder="Иван Петров"></div>
+            <div class="grid-2">
+              <div class="field"><label>Имя для входа</label><input id="v7StudentLogin" required placeholder="ivan_8class"></div>
+              <div class="field"><label>Пароль</label><input id="v7StudentPassword" required placeholder="можно сгенерировать"></div>
+            </div>
+            <button class="btn small soft" type="button" id="v7GeneratePassword">Сгенерировать пароль</button>
+            <div class="field"><label>Email родителя/ученика, необязательно</label><input id="v7StudentEmail" type="email" placeholder="для связи, не для входа"></div>
+            <div class="field"><label>Курс / предмет</label><input id="v7StudentSubject" placeholder="Математика, 8 класс"></div>
+            <div class="field"><label>Telegram</label><input id="v7StudentTelegram" placeholder="@username"></div>
+            <div class="field"><label>Личная Яндекс-папка</label><input id="v7StudentYandex" placeholder="https://disk.yandex.ru/..."></div>
+            <div class="field"><label>Заметки</label><textarea id="v7StudentNotes"></textarea></div>
+            <button class="btn" type="submit">Создать доступ ученику</button>
+          </form>
+        </div>
+        <div class="panel">
+          <div class="top-actions"><h3>Ученики и доступы</h3><button class="btn small soft" id="v7RefreshStudents">Обновить</button></div>
+          <div class="search-row"><input id="v7StudentSearch" placeholder="Поиск по имени, логину, предмету"><select id="v7StudentSubjectFilter"><option value="">Все предметы</option><option>Математика</option><option>Физика</option><option>Химия</option></select></div>
+          <div class="item-list" id="v7StudentsList"></div>
+        </div>
+      </div>`;
+    async function loadCreds(){
+      const ids = students.map(s => s.id).filter(Boolean);
+      if (!ids.length) return [];
+      const { data } = await window.supabaseClient.from('student_credentials').select('student_id, login_name, is_active, updated_at').in('student_id', ids);
+      return data || [];
+    }
+    const creds = await loadCreds();
+    const credByStudent = Object.fromEntries(creds.map(c => [c.student_id, c]));
+    const renderList = () => {
+      const q = trimVal('v7StudentSearch').toLowerCase();
+      const subj = val('v7StudentSubjectFilter');
+      const filtered = students.filter(s => {
+        const c = credByStudent[s.id] || {};
+        const hay = `${s.name||''} ${s.email||''} ${s.subject||''} ${c.login_name||''}`.toLowerCase();
+        return (!q || hay.includes(q)) && (!subj || String(s.subject||'').includes(subj));
+      });
+      const list = $id('v7StudentsList');
+      if (!list) return;
+      list.innerHTML = filtered.map(s => {
+        const c = credByStudent[s.id];
+        return `<article class="learning-item">
+          <div class="top"><strong>${esc3(s.name)}</strong><span class="topic-chip">${esc3(s.subject || 'курс не указан')}</span></div>
+          <p class="muted">${s.email ? esc3(s.email) + ' · ' : ''}${s.telegram ? esc3(s.telegram) + ' · ' : ''}логин: <strong>${esc3(c?.login_name || 'не создан')}</strong></p>
+          ${s.yandex_folder_url ? `<p class="muted">Материалы: Яндекс.Диск</p><a class="btn small soft" target="_blank" rel="noopener" href="${esc3(s.yandex_folder_url)}">Открыть папку</a>` : '<p class="muted">Яндекс-папка не указана</p>'}
+          <div class="row-actions">
+            <button class="btn small soft" data-v7-reset-pass="${s.id}">Новый пароль</button>
+            <button class="btn small soft" data-v7-edit-student="${s.id}">Изменить</button>
+            <button class="btn small red" data-v7-delete-student="${s.id}">Удалить</button>
+          </div>
+        </article>`;
+      }).join('') || '<div class="empty">Пока нет учеников</div>';
+    };
+    renderList();
+    $id('v7GeneratePassword')?.addEventListener('click', () => { if ($id('v7StudentPassword')) $id('v7StudentPassword').value = randomPassword(10); });
+    $id('v7StudentSearch')?.addEventListener('input', renderList);
+    $id('v7StudentSubjectFilter')?.addEventListener('change', renderList);
+    $id('v7RefreshStudents')?.addEventListener('click', () => typeof window.safeRefresh === 'function' ? window.safeRefresh('teacherStudents') : location.reload());
+  };
+
+  document.addEventListener('submit', async function(e){
+    const f = e.target;
+    if (!f || f.id !== 'v7AddStudentLoginForm') return;
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    try {
+      const login = normalizeLogin(trimVal('v7StudentLogin'));
+      const pass = trimVal('v7StudentPassword');
+      if (!login || !pass) throw new Error('Укажите имя входа и пароль.');
+      const email = trimVal('v7StudentEmail') || `${login}@student.local`;
+      const { data: student, error: studentError } = await window.supabaseClient.from('student_profiles').insert({
+        name: trimVal('v7StudentName'),
+        email,
+        subject: trimVal('v7StudentSubject'),
+        telegram: trimVal('v7StudentTelegram'),
+        yandex_folder_url: trimVal('v7StudentYandex') || null,
+        notes: trimVal('v7StudentNotes')
+      }).select('id').single();
+      if (studentError) throw studentError;
+      const { error: credError } = await window.supabaseClient.from('student_credentials').insert({
+        student_id: student.id,
+        login_name: login,
+        password_hash: await sha256(pass),
+        is_active: true
+      });
+      if (credError) throw credError;
+      toast3(`Доступ создан. Логин: ${login} · пароль: ${pass}`, 'success');
+      f.reset();
+      if (typeof window.safeRefresh === 'function') await window.safeRefresh('teacherStudents');
+      else if (typeof window.loadTeacherCabinet === 'function') await window.loadTeacherCabinet();
+    } catch(err) {
+      toast3('Не удалось создать доступ: ' + (err.message || err), 'error');
+    }
+  }, true);
+
+  document.addEventListener('click', async function(e){
+    const reset = e.target.closest('[data-v7-reset-pass]');
+    if (reset) {
+      e.preventDefault();
+      const id = reset.dataset.v7ResetPass;
+      const pass = prompt('Новый пароль для ученика', randomPassword(10));
+      if (!pass) return;
+      const { error } = await window.supabaseClient.from('student_credentials').update({ password_hash: await sha256(pass), is_active:true }).eq('student_id', id);
+      if (error) return toast3(error.message, 'error');
+      toast3('Новый пароль: ' + pass, 'success');
+      return;
+    }
+    const edit = e.target.closest('[data-v7-edit-student]');
+    if (edit) {
+      e.preventDefault();
+      const id = edit.dataset.v7EditStudent;
+      const s = (window.state?.students || []).find(x => x.id === id);
+      if (!s) return;
+      const name = prompt('Имя ученика', s.name || ''); if (name === null) return;
+      const subject = prompt('Предмет / курс', s.subject || '') ?? (s.subject || '');
+      const telegram = prompt('Telegram', s.telegram || '') ?? (s.telegram || '');
+      const yandex_folder_url = prompt('Ссылка на Яндекс-папку ученика', s.yandex_folder_url || '') ?? (s.yandex_folder_url || '');
+      const { error } = await window.supabaseClient.from('student_profiles').update({ name, subject, telegram, yandex_folder_url }).eq('id', id);
+      if (error) return toast3(error.message, 'error');
+      toast3('Карточка ученика обновлена');
+      if (typeof window.safeRefresh === 'function') await window.safeRefresh('teacherStudents');
+      return;
+    }
+    const del = e.target.closest('[data-v7-delete-student]');
+    if (del) {
+      e.preventDefault();
+      if (!confirm('Удалить ученика и его логин?')) return;
+      await window.supabaseClient.from('student_credentials').delete().eq('student_id', del.dataset.v7DeleteStudent);
+      const { error } = await window.supabaseClient.from('student_profiles').delete().eq('id', del.dataset.v7DeleteStudent);
+      if (error) return toast3(error.message, 'error');
+      toast3('Ученик удалён');
+      if (typeof window.safeRefresh === 'function') await window.safeRefresh('teacherStudents');
+      return;
+    }
+  }, true);
+
+  // Экспорт и первичная настройка.
+  window.studentLoginByName = studentLogin;
+  window.restoreStudentSession = restoreStudentSession;
+  window.safeRefresh = window.safeRefresh || (async function(page){ if (typeof window.loadTeacherCabinet === 'function') await window.loadTeacherCabinet(); if (page && typeof window.renderTeacherPage === 'function') await window.renderTeacherPage(page); });
+  setAuthMode('student_login');
+  restoreStudentSession().catch(console.warn);
 })();
 
 </script>

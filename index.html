@@ -3980,6 +3980,147 @@ body.is-logged .profile-only{display:inline-flex!important;}
 .sidebar .nav-group:not(.open) .nav-content{display:none!important;}
 @media(max-width:900px){.layout{grid-template-columns:1fr!important}.sidebar{position:relative!important;width:100%!important;max-height:none!important}.main{width:100%!important;overflow-x:hidden!important}}
 
+
+
+/* ===== PATCH v16: stable rounded sidebar + accessible profile/logout + real link navigation ===== */
+body aside.sidebar{
+  border-radius:0!important;
+  background:linear-gradient(180deg,rgba(255,255,255,.96),rgba(247,251,255,.93))!important;
+}
+body aside.sidebar .menu-accordion{
+  display:grid!important;
+  gap:14px!important;
+  overflow:visible!important;
+}
+body aside.sidebar details.menu-group{
+  display:block!important;
+  position:static!important;
+  overflow:hidden!important;
+  border:1px solid rgba(15,76,129,.14)!important;
+  border-radius:24px!important;
+  background:rgba(248,251,255,.92)!important;
+  box-shadow:0 16px 36px rgba(15,35,55,.06)!important;
+  min-height:0!important;
+  height:auto!important;
+  max-height:none!important;
+}
+body aside.sidebar details.menu-group > summary{
+  list-style:none!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:space-between!important;
+  gap:12px!important;
+  min-height:68px!important;
+  padding:18px 24px!important;
+  border-radius:24px 24px 0 0!important;
+  background:linear-gradient(135deg,#15537a,#0e7c66)!important;
+  color:#fff!important;
+  cursor:pointer!important;
+  user-select:none!important;
+}
+body aside.sidebar details.menu-group > summary::-webkit-details-marker{display:none!important;}
+body aside.sidebar details.menu-group > summary::marker{content:""!important;}
+body aside.sidebar details.menu-group > summary::before{display:none!important;content:none!important;}
+body aside.sidebar details.menu-group > summary::after{
+  content:"›"!important;
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  width:34px!important;
+  height:34px!important;
+  flex:0 0 34px!important;
+  border-radius:999px!important;
+  background:rgba(255,255,255,.16)!important;
+  color:#fff!important;
+  font-size:26px!important;
+  line-height:1!important;
+  transform:rotate(90deg)!important;
+  opacity:1!important;
+  visibility:visible!important;
+  transition:transform .18s ease, background .18s ease!important;
+}
+body aside.sidebar details.menu-group:not([open]) > summary{border-radius:24px!important;}
+body aside.sidebar details.menu-group:not([open]) > summary::after{transform:rotate(0deg)!important;}
+body aside.sidebar details.menu-group > .menu-group-body{
+  position:static!important;
+  display:grid!important;
+  grid-template-columns:1fr!important;
+  gap:6px!important;
+  min-height:0!important;
+  max-height:0!important;
+  overflow:hidden!important;
+  padding:0 18px!important;
+  opacity:0!important;
+  pointer-events:none!important;
+  background:transparent!important;
+  border:0!important;
+  box-shadow:none!important;
+  transition:max-height .18s ease, opacity .18s ease, padding .18s ease!important;
+}
+body aside.sidebar details.menu-group[open] > .menu-group-body,
+body aside.sidebar details.menu-group.active-branch > .menu-group-body,
+body aside.sidebar details.menu-group.flyout-open > .menu-group-body{
+  max-height:900px!important;
+  padding:18px!important;
+  opacity:1!important;
+  pointer-events:auto!important;
+  overflow:visible!important;
+}
+body aside.sidebar .nav-btn,
+body aside.sidebar a.nav-btn{
+  display:flex!important;
+  align-items:center!important;
+  gap:14px!important;
+  width:100%!important;
+  min-height:48px!important;
+  padding:12px 16px!important;
+  border-radius:16px!important;
+  border:0!important;
+  background:transparent!important;
+  color:#17334a!important;
+  text-decoration:none!important;
+  font:inherit!important;
+  font-weight:800!important;
+  text-align:left!important;
+  cursor:pointer!important;
+}
+body aside.sidebar .nav-btn:hover,
+body aside.sidebar .nav-btn.active{
+  background:rgba(15,76,129,.08)!important;
+  transform:none!important;
+}
+body aside.sidebar .sidebar-actions{
+  position:sticky!important;
+  bottom:0!important;
+  z-index:20!important;
+  padding:12px 0 0!important;
+  background:linear-gradient(180deg,rgba(255,255,255,0),rgba(255,255,255,.96) 28%)!important;
+}
+body.is-logged #profileQuickbar{display:flex!important;}
+#profileQuickbar{
+  display:none;
+  position:fixed;
+  right:18px;
+  top:18px;
+  z-index:5000;
+  align-items:center;
+  gap:10px;
+  padding:10px;
+  border:1px solid rgba(15,76,129,.14);
+  border-radius:999px;
+  background:rgba(255,255,255,.94);
+  box-shadow:0 16px 40px rgba(15,35,55,.12);
+  backdrop-filter:blur(10px);
+}
+#profileQuickbar .btn{min-height:38px;padding:9px 14px;border-radius:999px;}
+#profileQuickbar .btn.red{background:#b91c1c;color:#fff;}
+@media(max-width:980px){
+  #profileQuickbar{top:auto;right:12px;bottom:12px;border-radius:22px;}
+  body aside.sidebar details.menu-group{border-radius:20px!important;}
+  body aside.sidebar details.menu-group > summary{border-radius:20px 20px 0 0!important;}
+  body aside.sidebar details.menu-group:not([open]) > summary{border-radius:20px!important;}
+}
+
 </style>
 </head>
 
@@ -9231,6 +9372,147 @@ body{scroll-behavior:smooth;}
 .sidebar .nav-btn,.sidebar summary{transition:background .14s, transform .14s;}
 .sidebar .nav-btn:hover,.sidebar summary:hover{transform:translateX(2px);}
 @media (max-width: 980px){.teacher-tool-grid,.grid-2{grid-template-columns:1fr}.v15-card-head{display:block}.v15-inline-actions{margin-top:12px}}
+
+
+/* ===== PATCH v16: stable rounded sidebar + accessible profile/logout + real link navigation ===== */
+body aside.sidebar{
+  border-radius:0!important;
+  background:linear-gradient(180deg,rgba(255,255,255,.96),rgba(247,251,255,.93))!important;
+}
+body aside.sidebar .menu-accordion{
+  display:grid!important;
+  gap:14px!important;
+  overflow:visible!important;
+}
+body aside.sidebar details.menu-group{
+  display:block!important;
+  position:static!important;
+  overflow:hidden!important;
+  border:1px solid rgba(15,76,129,.14)!important;
+  border-radius:24px!important;
+  background:rgba(248,251,255,.92)!important;
+  box-shadow:0 16px 36px rgba(15,35,55,.06)!important;
+  min-height:0!important;
+  height:auto!important;
+  max-height:none!important;
+}
+body aside.sidebar details.menu-group > summary{
+  list-style:none!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:space-between!important;
+  gap:12px!important;
+  min-height:68px!important;
+  padding:18px 24px!important;
+  border-radius:24px 24px 0 0!important;
+  background:linear-gradient(135deg,#15537a,#0e7c66)!important;
+  color:#fff!important;
+  cursor:pointer!important;
+  user-select:none!important;
+}
+body aside.sidebar details.menu-group > summary::-webkit-details-marker{display:none!important;}
+body aside.sidebar details.menu-group > summary::marker{content:""!important;}
+body aside.sidebar details.menu-group > summary::before{display:none!important;content:none!important;}
+body aside.sidebar details.menu-group > summary::after{
+  content:"›"!important;
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  width:34px!important;
+  height:34px!important;
+  flex:0 0 34px!important;
+  border-radius:999px!important;
+  background:rgba(255,255,255,.16)!important;
+  color:#fff!important;
+  font-size:26px!important;
+  line-height:1!important;
+  transform:rotate(90deg)!important;
+  opacity:1!important;
+  visibility:visible!important;
+  transition:transform .18s ease, background .18s ease!important;
+}
+body aside.sidebar details.menu-group:not([open]) > summary{border-radius:24px!important;}
+body aside.sidebar details.menu-group:not([open]) > summary::after{transform:rotate(0deg)!important;}
+body aside.sidebar details.menu-group > .menu-group-body{
+  position:static!important;
+  display:grid!important;
+  grid-template-columns:1fr!important;
+  gap:6px!important;
+  min-height:0!important;
+  max-height:0!important;
+  overflow:hidden!important;
+  padding:0 18px!important;
+  opacity:0!important;
+  pointer-events:none!important;
+  background:transparent!important;
+  border:0!important;
+  box-shadow:none!important;
+  transition:max-height .18s ease, opacity .18s ease, padding .18s ease!important;
+}
+body aside.sidebar details.menu-group[open] > .menu-group-body,
+body aside.sidebar details.menu-group.active-branch > .menu-group-body,
+body aside.sidebar details.menu-group.flyout-open > .menu-group-body{
+  max-height:900px!important;
+  padding:18px!important;
+  opacity:1!important;
+  pointer-events:auto!important;
+  overflow:visible!important;
+}
+body aside.sidebar .nav-btn,
+body aside.sidebar a.nav-btn{
+  display:flex!important;
+  align-items:center!important;
+  gap:14px!important;
+  width:100%!important;
+  min-height:48px!important;
+  padding:12px 16px!important;
+  border-radius:16px!important;
+  border:0!important;
+  background:transparent!important;
+  color:#17334a!important;
+  text-decoration:none!important;
+  font:inherit!important;
+  font-weight:800!important;
+  text-align:left!important;
+  cursor:pointer!important;
+}
+body aside.sidebar .nav-btn:hover,
+body aside.sidebar .nav-btn.active{
+  background:rgba(15,76,129,.08)!important;
+  transform:none!important;
+}
+body aside.sidebar .sidebar-actions{
+  position:sticky!important;
+  bottom:0!important;
+  z-index:20!important;
+  padding:12px 0 0!important;
+  background:linear-gradient(180deg,rgba(255,255,255,0),rgba(255,255,255,.96) 28%)!important;
+}
+body.is-logged #profileQuickbar{display:flex!important;}
+#profileQuickbar{
+  display:none;
+  position:fixed;
+  right:18px;
+  top:18px;
+  z-index:5000;
+  align-items:center;
+  gap:10px;
+  padding:10px;
+  border:1px solid rgba(15,76,129,.14);
+  border-radius:999px;
+  background:rgba(255,255,255,.94);
+  box-shadow:0 16px 40px rgba(15,35,55,.12);
+  backdrop-filter:blur(10px);
+}
+#profileQuickbar .btn{min-height:38px;padding:9px 14px;border-radius:999px;}
+#profileQuickbar .btn.red{background:#b91c1c;color:#fff;}
+@media(max-width:980px){
+  #profileQuickbar{top:auto;right:12px;bottom:12px;border-radius:22px;}
+  body aside.sidebar details.menu-group{border-radius:20px!important;}
+  body aside.sidebar details.menu-group > summary{border-radius:20px 20px 0 0!important;}
+  body aside.sidebar details.menu-group:not([open]) > summary{border-radius:20px!important;}
+}
+
 </style>
 
 <script>
@@ -9478,6 +9760,208 @@ body{scroll-behavior:smooth;}
     if (now - last < 2500) { event.preventDefault(); return; }
     seenErrors.set(msg, now);
   }, true);
+})();
+</script>
+
+
+<script>
+/* ===== PATCH v16: final routing, student login, stable sidebar, accessible logout ===== */
+(function(){
+  if (window.__platformPatchV16Ready) return;
+  window.__platformPatchV16Ready = true;
+
+  const $ = (id) => document.getElementById(id);
+  const toast = (msg, type='info') => typeof window.toast === 'function' ? window.toast(msg, type) : alert(msg);
+  const normalizeLogin = (s) => String(s || '').trim().toLowerCase().replace(/\s+/g,'_').replace(/[^a-z0-9._-]/g,'');
+  const pageToPath = {
+    home:'/', about:'/about', whyMe:'/why-me', parents:'/parents', services:'/services', schedule:'/booking', payment:'/payment', contacts:'/contacts',
+    login:'/login', studentCabinet:'/student', parentCabinet:'/parent', teacherCabinet:'/teacher', teacherStudents:'/teacher/students', teacherMaterials:'/teacher/materials',
+    teacherHomework:'/teacher/homework', teacherHomeworkReview:'/teacher/homework-review', teacherSchedule:'/teacher/schedule', teacherBookings:'/teacher/bookings',
+    teacherNotifications:'/teacher/notifications', teacherFinance:'/teacher/finance', teacherPayments:'/teacher/payments', teacherContent:'/teacher/content',
+    analytics:'/teacher/analytics', activityLog:'/teacher/activity', settings:'/teacher/settings', integrations:'/teacher/yandex-materials',
+    library:'/library', quizzes:'/quizzes', cases:'/cases', lessonExamples:'/examples', reviews:'/reviews', faq:'/faq', rules:'/rules', today:'/today'
+  };
+  const pathToPage = Object.fromEntries(Object.entries(pageToPath).map(([p,path]) => [path,p]));
+  pathToPage['/why']='whyMe';
+  pathToPage['/booking']='schedule';
+  const pathFor = (page) => pageToPath[page] || ('/' + String(page || 'home').replace(/([A-Z])/g,'-$1').toLowerCase());
+  const pageForPath = () => pathToPage[location.pathname] || 'home';
+
+  async function sha256(text){
+    const data = new TextEncoder().encode(String(text || ''));
+    const hash = await crypto.subtle.digest('SHA-256', data);
+    return Array.from(new Uint8Array(hash)).map(b=>b.toString(16).padStart(2,'0')).join('');
+  }
+
+  function addProfileQuickbar(){
+    if ($('profileQuickbar')) return;
+    const bar = document.createElement('div');
+    bar.id = 'profileQuickbar';
+    bar.innerHTML = '<button class="btn small soft" type="button" id="quickProfileBtn"><i class="fa-solid fa-user"></i> Мой профиль</button><button class="btn small red" type="button" id="quickLogoutBtn"><i class="fa-solid fa-right-from-bracket"></i> Выйти</button>';
+    document.body.appendChild(bar);
+  }
+
+  function updateProfileButtonsV16(){
+    const logged = document.body.classList.contains('is-logged') || !!localStorage.getItem('student_session_id');
+    const isStudent = document.body.classList.contains('is-student') || !!localStorage.getItem('student_session_id');
+    const top = $('topLoginCabinetBtn');
+    if (top) {
+      top.onclick = (e) => { e.preventDefault(); window.setPage?.(logged ? (isStudent ? 'studentCabinet' : 'teacherCabinet') : 'login'); };
+      top.innerHTML = logged ? '<i class="fa-solid fa-user"></i><span>Мой профиль</span>' : '<i class="fa-solid fa-user-lock"></i><span>Войти в личный кабинет</span>';
+    }
+    document.querySelectorAll('.mobile-topbar [onclick*="login"]').forEach(btn => {
+      btn.onclick = (e) => { e.preventDefault(); window.setPage?.(logged ? (isStudent ? 'studentCabinet' : 'teacherCabinet') : 'login'); };
+      btn.innerHTML = logged ? '<i class="fa-solid fa-user"></i> Профиль' : '<i class="fa-solid fa-user-lock"></i> ЛК';
+    });
+    const profileBtn = $('quickProfileBtn');
+    if (profileBtn) profileBtn.onclick = () => window.setPage?.(isStudent ? 'studentCabinet' : 'teacherCabinet');
+  }
+
+  async function logoutV16(){
+    try { await window.supabaseClient?.auth?.signOut?.(); } catch(_) {}
+    localStorage.removeItem('student_session_id');
+    localStorage.removeItem('platform_current_page');
+    window.state = window.state || {};
+    window.state.user = null;
+    window.state.studentProfile = null;
+    document.body.classList.remove('is-logged','is-admin','is-student','is-parent');
+    updateProfileButtonsV16();
+    toast('Вы вышли из профиля', 'success');
+    window.setPage?.('home');
+  }
+
+  async function loadStudentByIdV16(studentId){
+    if (!studentId || !window.supabaseClient) return false;
+    const { data, error } = await window.supabaseClient.from('student_profiles').select('*').eq('id', studentId).maybeSingle();
+    if (error || !data) throw (error || new Error('Карточка ученика не найдена.'));
+    window.state = window.state || {};
+    window.state.studentProfile = data;
+    window.state.user = { id:'student-local-' + data.id, email:data.email || '', student_local:true };
+    document.body.classList.add('is-logged','is-student');
+    document.body.classList.remove('is-admin','is-parent');
+    updateProfileButtonsV16();
+    if (typeof window.loadStudentData === 'function') await window.loadStudentData();
+    return true;
+  }
+
+  window.restoreStudentSession = async function(){
+    const studentId = localStorage.getItem('student_session_id');
+    if (!studentId || document.body.classList.contains('is-admin')) return false;
+    try { return await loadStudentByIdV16(studentId); }
+    catch(e){ localStorage.removeItem('student_session_id'); console.warn('student session restore failed', e); return false; }
+  };
+
+  window.studentLoginByName = async function(login, password){
+    const p_login_name = normalizeLogin(login);
+    const p_password_hash = await sha256(password);
+    if (!p_login_name || !password) throw new Error('Введите имя и пароль.');
+    const attempts = [
+      () => window.supabaseClient.rpc('student_login_by_password_v16', { p_login_name, p_password_hash }),
+      () => window.supabaseClient.rpc('student_login_by_password', { p_login_name, p_password_hash })
+    ];
+    let studentId = null, lastError = null;
+    for (const run of attempts) {
+      try {
+        const { data, error } = await run();
+        if (!error && data) { studentId = data; break; }
+        lastError = error;
+      } catch(e){ lastError = e; }
+    }
+    if (!studentId) {
+      const msg = lastError?.message || 'Неверное имя или пароль.';
+      if (/function .*does not exist|Could not find the function|schema cache/i.test(msg)) {
+        throw new Error('В Supabase не выполнен SQL из v16. Выполните supabase_student_login_routes_v16.sql.');
+      }
+      throw new Error(msg);
+    }
+    localStorage.setItem('student_session_id', studentId);
+    await loadStudentByIdV16(studentId);
+    toast('Вход выполнен', 'success');
+    window.setPage?.('studentCabinet');
+  };
+
+  function enhanceNavigation(){
+    // У меню должны быть настоящие ссылки, чтобы их можно было открыть в новой вкладке.
+    document.querySelectorAll('aside.sidebar button.nav-btn[data-page]').forEach(btn => {
+      const a = document.createElement('a');
+      a.className = btn.className;
+      a.dataset.page = btn.dataset.page;
+      a.href = pathFor(btn.dataset.page);
+      a.innerHTML = btn.innerHTML;
+      a.setAttribute('role','link');
+      btn.replaceWith(a);
+    });
+    document.querySelectorAll('[data-page]').forEach(el => {
+      const page = el.dataset.page;
+      if (!page) return;
+      if (el.tagName === 'A') el.setAttribute('href', pathFor(page));
+      el.setAttribute('title', 'Открыть: ' + pathFor(page));
+    });
+  }
+
+  const previousSetPage = window.setPage;
+  window.setPage = function(page){
+    page = page || 'home';
+    try {
+      localStorage.setItem('platform_current_page', page);
+      const nextPath = pathFor(page);
+      if (location.pathname !== nextPath) history.pushState({ page }, '', nextPath);
+    } catch(_) {}
+    const result = typeof previousSetPage === 'function' ? previousSetPage(page) : undefined;
+    setTimeout(() => {
+      updateProfileButtonsV16();
+      enhanceNavigation();
+      document.querySelectorAll('aside.sidebar .menu-group').forEach(group => {
+        const hasActive = !!group.querySelector('.nav-btn.active');
+        group.classList.toggle('active-branch', hasActive);
+        if (hasActive) group.open = true;
+      });
+    }, 30);
+    return result;
+  };
+
+  document.addEventListener('click', function(e){
+    const nav = e.target.closest('[data-page]');
+    if (nav) {
+      const page = nav.dataset.page;
+      const href = pathFor(page);
+      if (e.metaKey || e.ctrlKey || e.shiftKey || e.button === 1) {
+        e.preventDefault();
+        window.open(href, '_blank', 'noopener');
+        return;
+      }
+      if (nav.tagName === 'A') e.preventDefault();
+      e.stopPropagation();
+      window.setPage?.(page);
+      return;
+    }
+    if (e.target.closest('#quickLogoutBtn') || e.target.closest('#logoutBtn')) {
+      e.preventDefault(); e.stopImmediatePropagation(); logoutV16();
+    }
+  }, true);
+
+  window.addEventListener('popstate', () => {
+    const page = pageForPath();
+    if (typeof previousSetPage === 'function') previousSetPage(page);
+    setTimeout(updateProfileButtonsV16, 50);
+  });
+
+  document.addEventListener('DOMContentLoaded', async () => {
+    addProfileQuickbar();
+    enhanceNavigation();
+    await window.restoreStudentSession?.();
+    updateProfileButtonsV16();
+    const page = pageForPath();
+    if (page && page !== 'home') window.setPage?.(page);
+  });
+  setTimeout(async () => {
+    addProfileQuickbar();
+    enhanceNavigation();
+    await window.restoreStudentSession?.();
+    updateProfileButtonsV16();
+    const page = pageForPath();
+    if (page && page !== (localStorage.getItem('platform_current_page') || '')) window.setPage?.(page);
+  }, 700);
 })();
 </script>
 

@@ -3919,7 +3919,7 @@
             <button class="nav-btn admin-only" data-page="analytics"><i class="fa-solid fa-chart-pie"></i> Аналитика</button>
             <button class="nav-btn admin-only" data-page="activityLog"><i class="fa-solid fa-clock-rotate-left"></i> История действий</button>
             <button class="nav-btn admin-only" data-page="settings"><i class="fa-solid fa-gear"></i> Настройки сайта</button>
-            <button class="nav-btn admin-only" data-page="integrations"><i class="fa-brands fa-google"></i> Google-интеграции</button>
+            <button class="nav-btn admin-only" data-page="integrations"><i class="fa-solid fa-folder-open"></i> Материалы Яндекс</button>
           </div>
         </details>
       </div>
@@ -3936,16 +3936,16 @@
         <section class="page active" id="page-home">
           <div class="hero-clean">
             <div>
-              <div class="eyebrow"><i class="fa-solid fa-video"></i> Онлайн · индивидуально · бесплатный разбор результатов</div>
-              <h1>Понятная подготовка по математике, физике и химии</h1>
-              <p class="lead">Сначала проведём диагностику, а затем вы получите бесплатный анализ результатов: уровень, пробелы и рекомендации. После пробного урока вы получите бесплатный разбор результатов и понятный план занятий: что учим, в каком порядке и как отслеживаем прогресс.</p>
+              <div class="eyebrow"><i class="fa-solid fa-video"></i> Онлайн · индивидуально · диагностика перед стартом</div>
+              <h1>Подготовка по математике, физике и химии с понятным планом и личным кабинетом</h1>
+              <p class="lead">Помогаю закрыть пробелы, подготовиться к контрольным и экзаменам без хаоса: сначала диагностика, затем персональный маршрут, материалы в личной папке ученика и регулярный контроль прогресса.</p>
               <div class="hero-actions">
-                <button class="btn" data-page="schedule"><i class="fa-solid fa-calendar-check"></i> Получить анализ результатов</button>
-                <button class="btn secondary" data-page="whyMe"><i class="fa-solid fa-circle-check"></i> Почему заниматься со мной</button>
+                <button class="btn" data-page="schedule"><i class="fa-solid fa-calendar-check"></i> Записаться на диагностику</button>
+                <button class="btn secondary" data-page="cases"><i class="fa-solid fa-trophy"></i> Посмотреть кейсы</button>
               </div>
               <div class="hero-proofline">
-                <span class="proof-pill"><i class="fa-solid fa-check"></i> Бесплатный разбор результатов</span>
-                <span class="proof-pill"><i class="fa-solid fa-check"></i> Личный план подготовки</span>
+                <span class="proof-pill"><i class="fa-solid fa-check"></i> Диагностика и план</span>
+                <span class="proof-pill"><i class="fa-solid fa-check"></i> Личная Яндекс-папка ученика</span>
                 <span class="proof-pill"><i class="fa-solid fa-check"></i> ДЗ, материалы и прогресс в ЛК</span>
               </div>
             </div>
@@ -3953,11 +3953,11 @@
               <div class="diagnostic-card">
                 <div class="big-icon"><i class="fa-solid fa-magnifying-glass-chart"></i></div>
                 <span class="free-badge"><i class="fa-solid fa-gift"></i> Бесплатный анализ результатов</span>
-                <h3>Бесплатный анализ результатов диагностики</h3>
+                <h3>Что ученик получает после диагностики</h3>
                 <ul class="diagnostic-list">
-                  <li><i class="fa-solid fa-check"></i><span>определим текущий уровень и пробелы;</span></li>
-                  <li><i class="fa-solid fa-check"></i><span>определим текущий уровень и пробелы;</span></li>
-                  <li><i class="fa-solid fa-check"></i><span>после диагностики получите бесплатный анализ и рекомендации.</span></li>
+                  <li><i class="fa-solid fa-check"></i><span>понятную карту пробелов и сильных тем;</span></li>
+                  <li><i class="fa-solid fa-check"></i><span>план занятий на ближайшие недели;</span></li>
+                  <li><i class="fa-solid fa-check"></i><span>доступ к материалам через личную Яндекс-папку.</span></li>
                 </ul>
                 <button class="btn" data-page="schedule">Записаться на диагностику</button>
               </div>
@@ -3974,7 +3974,7 @@
             <div class="section-head" style="margin-bottom:12px;">
               <div class="kicker"><i class="fa-solid fa-compass"></i> Быстрый старт</div>
               <h2>Выберите следующий шаг</h2>
-              <p class="lead">Главная цель сайта — быстро привести ученика к понятному действию: диагностика, кейсы или примеры материалов.</p>
+              <p class="lead">Посмотрите, как устроена работа: диагностика, реальные кейсы, примеры материалов и быстрый выбор времени для первого занятия.</p>
             </div>
             <div class="grid-3">
               <div class="panel link-card" onclick="setPage('schedule')"><div class="card-icon"><i class="fa-solid fa-calendar-check"></i></div><h3>Пробный урок</h3><p class="muted">Бесплатный анализ результатов диагностики, затем бесплатный разбор результатов.</p></div>
@@ -4666,6 +4666,7 @@
                 <div class="field"><label>Имя</label><input id="newStudentName" required></div>
                 <div class="field"><label>Email ученика</label><input id="newStudentEmail" type="email" required></div>
                 <div class="field"><label>Предмет / курс</label><input id="newStudentSubject" placeholder="Математика, 9 класс"></div>
+                <div class="field"><label>Яндекс-папка ученика</label><input id="newStudentYandexFolder" placeholder="https://disk.yandex.ru/..."></div>
                 <div class="field"><label>Заметка</label><textarea id="newStudentNotes"></textarea></div>
                 <button class="btn" type="submit">Добавить ученика</button>
               </form>
@@ -4859,48 +4860,39 @@
 
         <section class="page" id="page-integrations">
           <div class="section-head">
-            <div class="kicker"><i class="fa-brands fa-google"></i> Google</div>
-            <h2>Календарь, таблицы и почта</h2>
-            <p class="lead">Безопасная версия без хранения Google-секретов в HTML: ссылки, экспорт CSV и почтовые шаблоны. Полная автоматическая синхронизация требует Supabase Edge Function.</p>
+            <div class="kicker"><i class="fa-solid fa-folder-open"></i> Яндекс.Диск</div>
+            <h2>Личные папки учеников и материалы</h2>
+            <p class="lead">Google-синхронизация отключена. Материалы выдаются через Supabase и личные ссылки на Яндекс.Диск: у каждого ученика может быть своя папка с конспектами, домашними заданиями и записями.</p>
           </div>
-
+          <div style="display:none"><select id="googleSlotSelect"></select><select id="emailStudentSelect"></select></div>
           <div class="grid-3">
             <div class="panel">
-              <div class="card-icon"><i class="fa-solid fa-calendar-plus"></i></div>
-              <h3>Google Calendar</h3>
-              <p class="muted">Создайте событие в календаре для выбранного занятого слота.</p>
-              <div class="field"><label>Слот</label><select id="googleSlotSelect"></select></div>
-              <button class="btn" id="openGoogleCalendarBtn">Открыть Google Calendar</button>
+              <div class="card-icon"><i class="fa-solid fa-user-graduate"></i></div>
+              <h3>Папка ученика</h3>
+              <p class="muted">Ссылка хранится в карточке ученика и показывается в ЛК ученика.</p>
+              <button class="btn" onclick="setPage('teacherStudents')">Настроить папки</button>
             </div>
-
             <div class="panel">
-              <div class="card-icon"><i class="fa-solid fa-table"></i></div>
-              <h3>Google Sheets</h3>
-              <p class="muted">Экспорт учеников, слотов и ДЗ в CSV. Файл можно импортировать в Google Sheets.</p>
-              <div class="row-actions">
-                <button class="btn soft" id="exportStudentsCsv">CSV ученики</button>
-                <button class="btn soft" id="exportSlotsCsv">CSV слоты</button>
-                <button class="btn soft" id="exportHomeworkCsv">CSV ДЗ</button>
-              </div>
+              <div class="card-icon"><i class="fa-solid fa-book-open"></i></div>
+              <h3>Материалы</h3>
+              <p class="muted">Добавляйте ссылки на отдельные файлы или на папки Яндекс.Диска в разделе материалов.</p>
+              <button class="btn secondary" onclick="setPage('teacherMaterials')">Добавить материал</button>
             </div>
-
             <div class="panel">
               <div class="card-icon"><i class="fa-solid fa-envelope"></i></div>
-              <h3>Gmail / Почта</h3>
-              <p class="muted">Открыть письмо ученику с шаблоном сообщения.</p>
-              <div class="field"><label>Ученик</label><select id="emailStudentSelect"></select></div>
-              <div class="field"><label>Шаблон</label><select id="emailTemplate"><option value="homework">Напомнить о ДЗ</option><option value="lesson">Напомнить о занятии</option><option value="payment">Напомнить об оплате</option></select></div>
-              <button class="btn" id="openMailBtn">Открыть письмо</button>
+              <h3>Быстрое письмо</h3>
+              <p class="muted">Можно открыть письмо ученику с напоминанием о ДЗ, занятии или оплате.</p>
+              <div class="field"><label>Ученик</label><select id="yandexEmailStudentSelect"></select></div>
+              <div class="field"><label>Шаблон</label><select id="yandexEmailTemplate"><option value="homework">Напомнить о ДЗ</option><option value="lesson">Напомнить о занятии</option><option value="payment">Напомнить об оплате</option></select></div>
+              <button class="btn" id="openYandexMailBtn">Открыть письмо</button>
             </div>
           </div>
-
           <div class="panel" style="margin-top:18px;">
-            <h3>Для полной автоматизации</h3>
-            <p class="muted">Нужна серверная функция, потому что Google OAuth client secret и refresh token нельзя хранить в HTML. Рекомендуемая схема:</p>
+            <h3>Как теперь работает выдача материалов</h3>
             <ul class="clean">
-              <li><i class="fa-solid fa-check"></i> Supabase Edge Function создаёт событие в Google Calendar после бронирования.</li>
-              <li><i class="fa-solid fa-check"></i> Edge Function пишет строки в Google Sheets или отдаёт CSV по расписанию.</li>
-              <li><i class="fa-solid fa-check"></i> Edge Function отправляет письма через Gmail API или Resend/SendGrid.</li>
+              <li><i class="fa-solid fa-check"></i> В ЛК преподавателя у ученика указывается ссылка на его личную Яндекс-папку.</li>
+              <li><i class="fa-solid fa-check"></i> В разделе «Материалы» можно добавлять отдельные ссылки или материалы для конкретного ученика.</li>
+              <li><i class="fa-solid fa-check"></i> Ученик видит свою папку и выданные материалы в личном кабинете.</li>
             </ul>
           </div>
         </section>
@@ -6514,6 +6506,7 @@
         name: $('newStudentName').value.trim(),
         email: $('newStudentEmail').value.trim(),
         subject: $('newStudentSubject').value.trim(),
+        yandex_folder_url: $('newStudentYandexFolder')?.value.trim() || null,
         notes: $('newStudentNotes').value.trim()
       });
       if (error) return alert('Не удалось добавить ученика: ' + error.message);
@@ -7742,51 +7735,58 @@
     setLanguage(currentLang);
     prepareCabinetBranchBehavior();
   
-/* ===== CLOUD FUNCTIONAL TEACHER SECTIONS PATCH v4: stable CRM + safe Supabase loading ===== */
+/* ===== PLATFORM PATCH v6: Yandex materials + faster teacher CRM + no Google binding ===== */
 (function(){
-  if (window.__cloudTeacherPatchReady) return;
-  window.__cloudTeacherPatchReady = true;
+  if (window.__platformPatchV6Ready) return;
+  window.__platformPatchV6Ready = true;
 
   const $id = (id) => document.getElementById(id);
   const esc2 = (v) => String(v ?? '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
   const fmtMoney = (v) => Number(v || 0).toLocaleString('ru-RU') + ' ₽';
   const todayIso = () => new Date().toISOString().slice(0,10);
+  const isAdmin = () => document.body.classList.contains('is-admin');
+
+  let teacherDataLoading = null;
+  let teacherDataLoadedAt = 0;
+  const DATA_TTL = 4500;
+  const debounce = (fn, ms=180) => { let t; return (...args) => { clearTimeout(t); t=setTimeout(()=>fn(...args), ms); }; };
 
   function toast2(msg, type='success') {
     if (typeof window.toast === 'function') window.toast(msg, type);
     else alert(msg);
   }
 
-  async function ensureTeacherData() {
-    if (typeof window.loadTeacherData === 'function') {
-      try { await window.loadTeacherData(); return; } catch(e) { console.warn(e); }
-    }
-    if (typeof window.loadTeacherCabinet === 'function') {
-      try { await window.loadTeacherCabinet(); } catch(e) { console.warn(e); }
-    }
+  async function ensureTeacherData(force=false) {
+    if (!isAdmin()) return;
+    const fresh = Date.now() - teacherDataLoadedAt < DATA_TTL;
+    if (!force && fresh && window.state?.students) return;
+    if (teacherDataLoading && !force) return teacherDataLoading;
+    const loader = window.loadTeacherData || window.loadTeacherCabinet;
+    if (!loader) return;
+    teacherDataLoading = Promise.resolve(loader()).catch(e => {
+      console.warn('teacher data load skipped', e);
+      toast2('Часть данных не загрузилась: ' + (e.message || e), 'error');
+    }).finally(() => { teacherDataLoadedAt = Date.now(); teacherDataLoading = null; });
+    return teacherDataLoading;
   }
 
-  async function createGoogleSyncEvent(type, payload) {
+  async function logPlatformAction(action, payload={}) {
     if (!window.supabaseClient) return;
     try {
-      await supabaseClient.from('google_sync_events').insert({
-        type,
-        status: 'pending',
-        payload: payload || {}
-      });
-    } catch (e) {
-      // fallback to older queue
-      await supabaseClient.from('notification_events').insert({
-        type: 'google_sync_' + type,
-        channel: 'google',
-        status: 'pending',
-        payload: payload || {}
-      });
-    }
+      await supabaseClient.from('activity_log').insert({ action, entity_type:'platform', details:payload });
+    } catch (e) { console.warn('activity_log skipped', e); }
   }
 
-  function teacherMount(page) {
-    return $id(page + 'Mount');
+  async function safeRefresh(page) {
+    teacherDataLoadedAt = 0;
+    await ensureTeacherData(true);
+    if (page) await renderTeacherPage(page);
+  }
+
+  function teacherMount(page) { return $id(page + 'Mount'); }
+  function yandexBtn(url, label='Открыть Яндекс-папку') {
+    if (!url) return '';
+    return `<a class="btn small soft" target="_blank" rel="noopener" href="${esc2(url)}"><i class="fa-solid fa-folder-open"></i> ${esc2(label)}</a>`;
   }
 
   window.renderTeacherStudentsFunctional = async function() {
@@ -7803,25 +7803,38 @@
             <div class="field"><label>Email</label><input id="cloudStudentEmail" type="email" required></div>
             <div class="field"><label>Курс / предмет</label><input id="cloudStudentCourse" placeholder="Математика, 8 класс"></div>
             <div class="field"><label>Telegram</label><input id="cloudStudentTelegram" placeholder="@username"></div>
+            <div class="field"><label>Личная Яндекс-папка</label><input id="cloudStudentYandexFolder" placeholder="https://disk.yandex.ru/..."></div>
             <button class="btn" type="submit">Сохранить ученика</button>
           </form>
         </div>
         <div class="panel">
-          <h3>Ученики в облаке <span class="cloud-sync-pill">Supabase</span></h3>
-          <div class="item-list">
-            ${students.map(s => `
-              <article class="learning-item">
-                <div class="top"><strong>${esc2(s.name)}</strong><span class="topic-chip">${esc2(s.subject || 'курс не указан')}</span></div>
-                <p class="muted">${esc2(s.email || '')}${s.telegram ? ' · ' + esc2(s.telegram) : ''}</p>
-                <div class="row-actions">
-                  <button class="btn small soft" data-cloud-edit-student="${s.id}">Изменить</button>
-                  <button class="btn small red" data-cloud-delete-student="${s.id}">Удалить</button>
-                </div>
-              </article>
-            `).join('') || '<div class="empty">Пока нет учеников</div>'}
-          </div>
+          <div class="top-actions"><h3>Ученики <span class="cloud-sync-pill">Supabase</span></h3><button class="btn small soft" id="cloudRefreshStudents">Обновить</button></div>
+          <div class="search-row"><input id="cloudStudentSearch" placeholder="Поиск по имени, email, предмету"><select id="cloudStudentSubject"><option value="">Все предметы</option><option>Математика</option><option>Физика</option><option>Химия</option></select></div>
+          <div class="item-list" id="cloudStudentsList"></div>
         </div>
       </div>`;
+    const renderList = () => {
+      const q = ($id('cloudStudentSearch')?.value || '').toLowerCase();
+      const subj = $id('cloudStudentSubject')?.value || '';
+      const filtered = students.filter(s => {
+        const hay = `${s.name||''} ${s.email||''} ${s.subject||''}`.toLowerCase();
+        return (!q || hay.includes(q)) && (!subj || String(s.subject||'').includes(subj));
+      });
+      $id('cloudStudentsList').innerHTML = filtered.map(s => `
+        <article class="learning-item">
+          <div class="top"><strong>${esc2(s.name)}</strong><span class="topic-chip">${esc2(s.subject || 'курс не указан')}</span></div>
+          <p class="muted">${esc2(s.email || '')}${s.telegram ? ' · ' + esc2(s.telegram) : ''}</p>
+          ${s.yandex_folder_url ? `<p class="muted">Материалы: Яндекс.Диск</p>${yandexBtn(s.yandex_folder_url)}` : '<p class="muted">Яндекс-папка не указана</p>'}
+          <div class="row-actions">
+            <button class="btn small soft" data-cloud-edit-student="${s.id}">Изменить</button>
+            <button class="btn small red" data-cloud-delete-student="${s.id}">Удалить</button>
+          </div>
+        </article>`).join('') || '<div class="empty">Пока нет учеников</div>';
+    };
+    renderList();
+    $id('cloudStudentSearch')?.addEventListener('input', debounce(renderList));
+    $id('cloudStudentSubject')?.addEventListener('change', renderList);
+    $id('cloudRefreshStudents')?.addEventListener('click', () => safeRefresh('teacherStudents'));
   };
 
   window.renderTeacherMaterialsFunctional = async function() {
@@ -7843,12 +7856,12 @@
           </form>
         </div>
         <div class="panel">
-          <h3>Добавить материал</h3>
+          <h3>Добавить материал / ссылку</h3>
           <form class="form-grid" id="cloudAddMaterialForm">
-            <div class="field"><label>Название</label><input id="cloudMaterialTitle" required></div>
-            <div class="field"><label>Тема</label><select id="cloudMaterialTopic">${topics.map(t=>`<option value="${t.id}">${esc2(t.title)}</option>`).join('')}</select></div>
+            <div class="field"><label>Название</label><input id="cloudMaterialTitle" required placeholder="Конспект по квадратным уравнениям"></div>
+            <div class="field"><label>Тема</label><select id="cloudMaterialTopic"><option value="">Без темы</option>${topics.map(t=>`<option value="${t.id}">${esc2(t.title)}</option>`).join('')}</select></div>
             <div class="field"><label>Ученик</label><select id="cloudMaterialStudent"><option value="">Всем</option>${students.map(s=>`<option value="${s.id}">${esc2(s.name)}</option>`).join('')}</select></div>
-            <div class="field"><label>Ссылка</label><input id="cloudMaterialUrl" placeholder="https://..."></div>
+            <div class="field"><label>Ссылка на файл / папку Яндекс.Диска</label><input id="cloudMaterialUrl" placeholder="https://disk.yandex.ru/..."></div>
             <div class="field"><label>Описание</label><textarea id="cloudMaterialDescription"></textarea></div>
             <button class="btn" type="submit">Сохранить материал</button>
           </form>
@@ -7857,10 +7870,10 @@
           <h3>Материалы</h3>
           <div class="item-list">${materials.map(m=>`
             <article class="learning-item">
-              <strong>${esc2(m.title)}</strong>
-              <p class="muted">${esc2(m.topics?.title || '')}</p>
+              <div class="top"><strong>${esc2(m.title)}</strong><span class="topic-chip">${esc2(m.topics?.title || 'материал')}</span></div>
+              <p class="muted">${m.student_profiles?.name ? 'Для: ' + esc2(m.student_profiles.name) : 'Для всех учеников'}</p>
               <p>${esc2(m.description || '')}</p>
-              ${m.file_url || m.url ? `<a class="btn small soft" target="_blank" href="${esc2(m.file_url || m.url)}">Открыть</a>` : ''}
+              ${m.file_url || m.url ? `<a class="btn small soft" target="_blank" rel="noopener" href="${esc2(m.file_url || m.url)}">Открыть материал</a>` : ''}
             </article>`).join('') || '<div class="empty">Материалов пока нет</div>'}</div>
         </div>
       </div>`;
@@ -7877,68 +7890,28 @@
     const filtered = reviewOnly ? hw.filter(h => h.is_done || h.answer_text || h.answer_file_url) : hw;
     mount.innerHTML = `
       <div class="teacher-tool-grid">
-        ${reviewOnly ? '' : `
-        <div class="panel">
-          <h3>Выдать ДЗ</h3>
-          <form class="form-grid" id="cloudAddHomeworkForm">
-            <div class="field"><label>Ученик</label><select id="cloudHomeworkStudent" required>${students.map(s=>`<option value="${s.id}">${esc2(s.name)}</option>`).join('')}</select></div>
-            <div class="field"><label>Тема</label><select id="cloudHomeworkTopic"><option value="">Без темы</option>${topics.map(t=>`<option value="${t.id}">${esc2(t.title)}</option>`).join('')}</select></div>
-            <div class="field"><label>Название</label><input id="cloudHomeworkTitle" required></div>
-            <div class="field"><label>Описание</label><textarea id="cloudHomeworkDescription"></textarea></div>
-            <div class="field"><label>Дедлайн</label><input id="cloudHomeworkDeadline" type="date"></div>
-            <button class="btn" type="submit">Выдать ДЗ</button>
-          </form>
-        </div>`}
-        <div class="panel ${reviewOnly ? 'teacher-tool-full' : ''}">
-          <h3>${reviewOnly ? 'Присланные работы' : 'Домашние задания'}</h3>
-          <div class="item-list">${filtered.map(h=>`
-            <article class="learning-item">
-              <div class="top"><strong>${esc2(h.title)}</strong><span class="status ${h.is_done ? 'done' : 'pending'}">${h.grade_percent != null ? 'проверено' : (h.is_done ? 'сдано' : 'в работе')}</span></div>
-              <p class="muted">${esc2(h.student_profiles?.name || '')} · ${esc2(h.deadline || 'без срока')}</p>
-              ${h.answer_text ? `<p><strong>Ответ:</strong> ${esc2(h.answer_text)}</p>` : ''}
-              ${h.answer_file_url ? `<a class="btn small soft" target="_blank" href="${esc2(h.answer_file_url)}">Файл ученика</a>` : ''}
-              ${h.grade_percent != null ? `<p><strong>Оценка:</strong> ${Number(h.grade_percent)}%</p><p>${esc2(h.teacher_comment || '')}</p>` : ''}
-              <div class="row-actions">
-                <button class="btn small" data-cloud-grade-homework="${h.id}">Оценить</button>
-                <button class="btn small soft" data-cloud-remind-homework="${h.id}">Напомнить</button>
-              </div>
-            </article>`).join('') || '<div class="empty">Пока пусто</div>'}</div>
-        </div>
-      </div>`;
-  };
-
-  window.renderTeacherBookingsFunctional = async function() {
-    await ensureTeacherData();
-    const mount = teacherMount('teacherBookings');
-    if (!mount) return;
-    const requests = window.state?.bookingRequests || [];
-    mount.innerHTML = `
-      <div class="panel">
-        <h3>Заявки на занятия <span class="cloud-sync-pill">Supabase</span></h3>
-        <div class="item-list">
-          ${requests.map(r=>`
-            <article class="learning-item">
-              <div class="top"><strong>${esc2(r.name || r.student_profiles?.name || 'Заявка')}</strong><span class="status ${esc2(r.status)}">${typeof humanStatus === 'function' ? humanStatus(r.status) : r.status}</span></div>
-              <p class="muted">${esc2(r.contact || r.email || '')}</p>
-              <p>${esc2(r.direction || '')} ${r.format ? '· ' + esc2(r.format) : ''}</p>
-              <p class="muted">${r.slots?.date ? esc2(r.slots.date + ' ' + r.slots.time) : 'Время согласуем'}</p>
-              <div class="row-actions">
-                <button class="btn small green" data-cloud-approve-booking="${r.id}">Подтвердить</button>
-                <button class="btn small red" data-cloud-reject-booking="${r.id}">Отклонить</button>
-              </div>
-            </article>`).join('') || '<div class="empty">Заявок пока нет</div>'}
-        </div>
+        ${reviewOnly ? '' : `<div class="panel"><h3>Выдать ДЗ</h3><form class="form-grid" id="cloudAddHomeworkForm">
+          <div class="field"><label>Ученик</label><select id="cloudHomeworkStudent" required>${students.map(s=>`<option value="${s.id}">${esc2(s.name)}</option>`).join('')}</select></div>
+          <div class="field"><label>Тема</label><select id="cloudHomeworkTopic"><option value="">Без темы</option>${topics.map(t=>`<option value="${t.id}">${esc2(t.title)}</option>`).join('')}</select></div>
+          <div class="field"><label>Название</label><input id="cloudHomeworkTitle" required></div>
+          <div class="field"><label>Описание</label><textarea id="cloudHomeworkDescription"></textarea></div>
+          <div class="field"><label>Дедлайн</label><input id="cloudHomeworkDeadline" type="date"></div>
+          <button class="btn" type="submit">Выдать ДЗ</button>
+        </form></div>`}
+        <div class="panel ${reviewOnly ? 'teacher-tool-full' : ''}"><h3>${reviewOnly ? 'Присланные работы' : 'Домашние задания'}</h3><div class="item-list">${filtered.map(h=>`
+          <article class="learning-item">
+            <div class="top"><strong>${esc2(h.title)}</strong><span class="status ${h.grade_percent != null ? 'done' : (h.is_done ? 'pending' : 'open')}">${h.grade_percent != null ? 'проверено' : (h.is_done ? 'сдано' : 'в работе')}</span></div>
+            <p class="muted">${esc2(h.student_profiles?.name || '')} · срок: ${esc2(h.deadline || 'без срока')}</p>
+            ${h.answer_text ? `<p><strong>Ответ:</strong> ${esc2(h.answer_text)}</p>` : ''}
+            ${h.answer_file_url ? `<a class="btn small soft" target="_blank" href="${esc2(h.answer_file_url)}">Файл ученика</a>` : ''}
+            ${h.grade_percent != null ? `<p><strong>Оценка:</strong> ${Number(h.grade_percent)}%</p><p>${esc2(h.teacher_comment || '')}</p>` : ''}
+            <div class="row-actions"><button class="btn small" data-cloud-grade-homework="${h.id}">Оценить</button><button class="btn small soft" data-cloud-remind-homework="${h.id}">Напомнить</button></div>
+          </article>`).join('') || '<div class="empty">Пока пусто</div>'}</div></div>
       </div>`;
   };
 
   let slotWeekStart = null;
-  function getMondaySafe(d) {
-    const date = new Date(d);
-    const day = date.getDay() || 7;
-    date.setDate(date.getDate() - day + 1);
-    date.setHours(0,0,0,0);
-    return date;
-  }
+  function getMondaySafe(d) { const date = new Date(d); const day = date.getDay() || 7; date.setDate(date.getDate() - day + 1); date.setHours(0,0,0,0); return date; }
   function addDaysSafe(d, n) { const x = new Date(d); x.setDate(x.getDate()+n); return x; }
   function isoSafe(d) { return new Date(d).toISOString().slice(0,10); }
 
@@ -7951,7 +7924,6 @@
     const slots = window.state?.slots || [];
     const days = Array.from({length:7}, (_,i)=>addDaysSafe(slotWeekStart,i));
     const times = [...new Set(['10:00','12:00','15:00','16:30','18:00','19:30', ...slots.map(s=>s.time).filter(Boolean)])].sort();
-
     const grid = [`<div class="slot-editor-cell slot-editor-head">Время</div>`];
     days.forEach(d => grid.push(`<div class="slot-editor-cell slot-editor-head">${d.toLocaleDateString('ru-RU',{weekday:'short', day:'2-digit', month:'2-digit'})}</div>`));
     times.forEach(time => {
@@ -7959,49 +7931,24 @@
       days.forEach(day => {
         const date = isoSafe(day);
         const cellSlots = slots.filter(s => s.date === date && s.time === time);
-        grid.push(`<div class="slot-editor-cell" data-cloud-add-slot-date="${date}" data-cloud-add-slot-time="${time}">
-          ${cellSlots.map(s=>`
-            <div class="slot-editor-chip ${esc2(s.status)}">
-              <span>${esc2(s.lesson_types?.title || 'Слот')}</span>
-              <span>${esc2(typeof humanStatus === 'function' ? humanStatus(s.status) : s.status)} · ${fmtMoney(s.price || s.lesson_types?.price)}</span>
-              <div class="row-actions" style="margin-top:4px">
-                <button class="btn small green" data-cloud-slot-complete="${s.id}">✓</button>
-                <button class="btn small soft" data-cloud-slot-edit="${s.id}">↔</button>
-                <button class="btn small red" data-cloud-slot-delete="${s.id}">×</button>
-              </div>
-            </div>`).join('') || '<span class="calendar-add-hint">+ добавить слот</span>'}
-        </div>`);
+        grid.push(`<div class="slot-editor-cell" data-cloud-add-slot-date="${date}" data-cloud-add-slot-time="${time}">${cellSlots.map(s=>`
+          <div class="slot-editor-chip ${esc2(s.status)}"><span>${esc2(s.lesson_types?.title || 'Слот')}</span><span>${esc2(typeof humanStatus === 'function' ? humanStatus(s.status) : s.status)} · ${fmtMoney(s.price || s.lesson_types?.price)}</span><div class="row-actions" style="margin-top:4px"><button class="btn small green" data-cloud-slot-complete="${s.id}">✓</button><button class="btn small soft" data-cloud-slot-edit="${s.id}">↔</button><button class="btn small red" data-cloud-slot-delete="${s.id}">×</button></div></div>`).join('') || '<span class="calendar-add-hint">+ добавить слот</span>'}</div>`);
       });
     });
+    mount.innerHTML = `<div class="panel"><div class="top-actions"><h3>Календарь слотов <span class="cloud-sync-pill">Supabase</span></h3><div class="row-actions" style="margin-top:0"><button class="btn small soft" id="cloudSlotPrev">← Неделя</button><button class="btn small soft" id="cloudSlotToday">Сегодня</button><button class="btn small soft" id="cloudSlotNext">Неделя →</button></div></div><div class="notice" style="margin-bottom:12px">Клик по пустой ячейке добавляет слот. Кнопки внутри слота удаляют, переносят или отмечают занятие проведённым.</div><div class="slot-editor-calendar">${grid.join('')}</div></div>
+      <div class="panel"><h3>Быстрое создание слота</h3><form class="form-grid" id="cloudManualSlotForm"><div class="grid-2"><div class="field"><label>Дата</label><input id="cloudSlotDate" type="date" value="${todayIso()}" required></div><div class="field"><label>Время</label><input id="cloudSlotTime" type="time" value="16:00" required></div></div><div class="field"><label>Тип занятия</label><select id="cloudSlotLessonType"><option value="">Без типа</option>${lessonTypes.map(lt=>`<option value="${lt.id}">${esc2(lt.title)} · ${fmtMoney(lt.price)}</option>`).join('')}</select></div><div class="grid-2"><div class="field"><label>Длительность</label><input id="cloudSlotDuration" type="number" value="60"></div><div class="field"><label>Цена</label><input id="cloudSlotPrice" type="number" value="2000"></div></div><button class="btn" type="submit">Добавить слот</button></form></div>`;
+    $id('cloudSlotPrev')?.addEventListener('click', () => { slotWeekStart = addDaysSafe(slotWeekStart, -7); renderTeacherScheduleFunctional(); });
+    $id('cloudSlotToday')?.addEventListener('click', () => { slotWeekStart = getMondaySafe(new Date()); renderTeacherScheduleFunctional(); });
+    $id('cloudSlotNext')?.addEventListener('click', () => { slotWeekStart = addDaysSafe(slotWeekStart, 7); renderTeacherScheduleFunctional(); });
+  };
 
-    mount.innerHTML = `
-      <div class="panel">
-        <div class="top-actions">
-          <h3>Календарь слотов <span class="cloud-sync-pill">Supabase + Google Calendar queue</span></h3>
-          <div class="row-actions" style="margin-top:0">
-            <button class="btn small soft" id="cloudSlotPrev">← Неделя</button>
-            <button class="btn small soft" id="cloudSlotToday">Сегодня</button>
-            <button class="btn small soft" id="cloudSlotNext">Неделя →</button>
-          </div>
-        </div>
-        <div class="notice" style="margin-bottom:12px">Клик по пустой ячейке добавляет слот в Supabase. Кнопки внутри слота удаляют, переносят или отмечают занятие проведённым. Для Google Calendar создаётся очередь синхронизации.</div>
-        <div class="slot-editor-calendar">${grid.join('')}</div>
-      </div>
-      <div class="panel">
-        <h3>Быстрое создание слота</h3>
-        <form class="form-grid" id="cloudManualSlotForm">
-          <div class="grid-2">
-            <div class="field"><label>Дата</label><input id="cloudSlotDate" type="date" value="${todayIso()}" required></div>
-            <div class="field"><label>Время</label><input id="cloudSlotTime" type="time" value="16:00" required></div>
-          </div>
-          <div class="field"><label>Тип занятия</label><select id="cloudSlotLessonType">${lessonTypes.map(lt=>`<option value="${lt.id}" data-duration="${lt.duration || 60}" data-price="${lt.price || 2000}">${esc2(lt.title)} · ${fmtMoney(lt.price)}</option>`).join('')}</select></div>
-          <div class="grid-2">
-            <div class="field"><label>Длительность</label><input id="cloudSlotDuration" type="number" value="60"></div>
-            <div class="field"><label>Цена</label><input id="cloudSlotPrice" type="number" value="2000"></div>
-          </div>
-          <button class="btn" type="submit">Добавить слот в облако</button>
-        </form>
-      </div>`;
+  window.renderTeacherBookingsFunctional = async function() {
+    await ensureTeacherData();
+    const mount = teacherMount('teacherBookings');
+    if (!mount) return;
+    const requests = window.state?.bookingRequests || [];
+    mount.innerHTML = `<div class="panel"><h3>Заявки на занятия <span class="cloud-sync-pill">Supabase</span></h3><div class="item-list">${requests.map(r=>`
+      <article class="learning-item"><div class="top"><strong>${esc2(r.name || r.student_profiles?.name || 'Заявка')}</strong><span class="status ${esc2(r.status)}">${typeof humanStatus === 'function' ? humanStatus(r.status) : r.status}</span></div><p class="muted">${esc2(r.contact || r.email || '')}</p><p>${esc2(r.direction || '')} ${r.format ? '· ' + esc2(r.format) : ''}</p><div class="row-actions"><button class="btn small green" data-cloud-approve-booking="${r.id}">Подтвердить</button><button class="btn small red" data-cloud-reject-booking="${r.id}">Отклонить</button></div></article>`).join('') || '<div class="empty">Заявок пока нет</div>'}</div></div>`;
   };
 
   window.renderTeacherFinanceFunctional = async function(paymentsOnly=false) {
@@ -8013,71 +7960,24 @@
     const subscriptions = window.state?.subscriptions || [];
     const students = window.state?.students || [];
     const payments = window.state?.payments || [];
-    mount.innerHTML = `
-      <div class="teacher-tool-grid">
-        ${paymentsOnly ? '' : `
-        <div class="panel">
-          <h3>Тип занятия</h3>
-          <form class="form-grid" id="cloudAddLessonTypeForm">
-            <div class="field"><label>Название</label><input id="cloudLessonTypeTitle" required></div>
-            <div class="field"><label>Предмет</label><input id="cloudLessonTypeSubject" placeholder="Математика"></div>
-            <div class="grid-2"><div class="field"><label>Длительность</label><input id="cloudLessonTypeDuration" type="number" value="60"></div><div class="field"><label>Цена</label><input id="cloudLessonTypePrice" type="number" value="2000"></div></div>
-            <button class="btn" type="submit">Сохранить тип</button>
-          </form>
-        </div>
-        <div class="panel">
-          <h3>Абонементы</h3>
-          <div class="item-list">${subscriptions.map(s=>`<article class="learning-item"><strong>${esc2(s.title)}</strong><p>${s.lessons_count || 0} занятий · скидка ${s.discount_percent || 0}%</p></article>`).join('') || '<div class="empty">Абонементов пока нет</div>'}</div>
-        </div>`}
-        <div class="panel teacher-tool-full">
-          <h3>Добавить оплату</h3>
-          <form class="form-grid" id="cloudAddPaymentForm">
-            <div class="field"><label>Ученик</label><select id="cloudPaymentStudent"><option value="">Без ученика</option>${students.map(s=>`<option value="${s.id}">${esc2(s.name)}</option>`).join('')}</select></div>
-            <div class="grid-2"><div class="field"><label>Сумма</label><input id="cloudPaymentAmount" type="number" value="2000"></div><div class="field"><label>Статус</label><select id="cloudPaymentStatus"><option value="paid">Оплачено</option><option value="pending">Ожидает</option><option value="cancelled">Отменено</option></select></div></div>
-            <div class="field"><label>Комментарий</label><input id="cloudPaymentComment"></div>
-            <button class="btn" type="submit">Сохранить оплату</button>
-          </form>
-        </div>
-        <div class="panel teacher-tool-full">
-          <h3>Оплаты</h3>
-          <div class="item-list">${payments.map(p=>`<article class="learning-item"><div class="top"><strong>${fmtMoney(p.amount)}</strong><span class="status ${esc2(p.status)}">${esc2(typeof humanStatus === 'function' ? humanStatus(p.status) : p.status)}</span></div><p class="muted">${esc2(p.student_profiles?.name || '')}</p><p>${esc2(p.notes || '')}</p></article>`).join('') || '<div class="empty">Оплат пока нет</div>'}</div>
-        </div>
-      </div>`;
+    mount.innerHTML = `<div class="teacher-tool-grid">${paymentsOnly ? '' : `<div class="panel"><h3>Тип занятия</h3><form class="form-grid" id="cloudAddLessonTypeForm"><div class="field"><label>Название</label><input id="cloudLessonTypeTitle" required></div><div class="field"><label>Предмет</label><input id="cloudLessonTypeSubject" placeholder="Математика"></div><div class="grid-2"><div class="field"><label>Длительность</label><input id="cloudLessonTypeDuration" type="number" value="60"></div><div class="field"><label>Цена</label><input id="cloudLessonTypePrice" type="number" value="2000"></div></div><button class="btn" type="submit">Сохранить тип</button></form></div><div class="panel"><h3>Абонементы</h3><div class="item-list">${subscriptions.map(s=>`<article class="learning-item"><strong>${esc2(s.title)}</strong><p>${s.lessons_count || 0} занятий · скидка ${s.discount_percent || 0}%</p></article>`).join('') || '<div class="empty">Абонементов пока нет</div>'}</div></div>`}<div class="panel teacher-tool-full"><h3>Добавить оплату</h3><form class="form-grid" id="cloudAddPaymentForm"><div class="field"><label>Ученик</label><select id="cloudPaymentStudent"><option value="">Без ученика</option>${students.map(s=>`<option value="${s.id}">${esc2(s.name)}</option>`).join('')}</select></div><div class="grid-2"><div class="field"><label>Сумма</label><input id="cloudPaymentAmount" type="number" value="2000"></div><div class="field"><label>Статус</label><select id="cloudPaymentStatus"><option value="paid">Оплачено</option><option value="pending">Ожидает</option><option value="cancelled">Отменено</option></select></div></div><div class="field"><label>Комментарий</label><input id="cloudPaymentComment"></div><button class="btn" type="submit">Сохранить оплату</button></form></div><div class="panel teacher-tool-full"><h3>Оплаты</h3><div class="item-list">${payments.map(p=>`<article class="learning-item"><div class="top"><strong>${fmtMoney(p.amount)}</strong><span class="status ${esc2(p.status)}">${esc2(typeof humanStatus === 'function' ? humanStatus(p.status) : p.status)}</span></div><p class="muted">${esc2(p.student_profiles?.name || '')}</p><p>${esc2(p.notes || '')}</p></article>`).join('') || '<div class="empty">Оплат пока нет</div>'}</div></div></div>`;
   };
 
   window.renderTeacherContentFunctional = async function() {
     await ensureTeacherData();
     const mount = teacherMount('teacherContent');
     if (!mount) return;
-    if (typeof loadPublicReviews === 'function') await loadPublicReviews();
     const reviews = window.state?.reviews || [];
     const cases = window.state?.cases || [];
     const examples = window.state?.examples || [];
-    mount.innerHTML = `
-      <div class="teacher-tool-grid">
-        <div class="panel">
-          <h3>Добавить отзыв</h3>
-          <form class="form-grid" id="cloudAddReviewForm">
-            <div class="field"><label>Автор</label><input id="cloudReviewAuthor" required></div>
-            <div class="field"><label>Оценка</label><input id="cloudReviewRating" type="number" min="1" max="5" value="5"></div>
-            <div class="field"><label>Текст</label><textarea id="cloudReviewText" required></textarea></div>
-            <div class="field"><label>Подтверждающая ссылка</label><input id="cloudReviewProofUrl"></div>
-            <button class="btn" type="submit">Сохранить отзыв</button>
-          </form>
-        </div>
-        <div class="panel">
-          <h3>Отзывы</h3>
-          <div class="item-list">${reviews.map(r=>`<article class="learning-item"><strong>${esc2(r.author)}</strong><p>${esc2(r.text)}</p></article>`).join('') || '<div class="empty">Отзывов пока нет</div>'}</div>
-        </div>
-        <div class="panel">
-          <h3>Кейсы</h3>
-          <div class="item-list">${cases.map(c=>`<article class="learning-item"><strong>${esc2(c.title)}</strong><p>${esc2(c.result_text || '')}</p></article>`).join('') || '<div class="empty">Кейсов пока нет</div>'}</div>
-        </div>
-        <div class="panel">
-          <h3>Примеры материалов</h3>
-          <div class="item-list">${examples.map(x=>`<article class="learning-item"><strong>${esc2(x.title)}</strong><p>${esc2(x.description || '')}</p></article>`).join('') || '<div class="empty">Примеров пока нет</div>'}</div>
-        </div>
-      </div>`;
+    mount.innerHTML = `<div class="teacher-tool-grid">
+      <div class="panel"><h3>Добавить отзыв</h3><form class="form-grid" id="cloudAddReviewForm"><div class="field"><label>Автор</label><input id="cloudReviewAuthor" required></div><div class="field"><label>Оценка</label><input id="cloudReviewRating" type="number" min="1" max="5" value="5"></div><div class="field"><label>Текст</label><textarea id="cloudReviewText" required></textarea></div><div class="field"><label>Подтверждающая ссылка</label><input id="cloudReviewProofUrl"></div><button class="btn" type="submit">Сохранить отзыв</button></form></div>
+      <div class="panel"><h3>Добавить кейс</h3><form class="form-grid" id="cloudAddCaseForm"><div class="field"><label>Заголовок</label><input id="cloudCaseTitle" required></div><div class="field"><label>Предмет / класс</label><input id="cloudCaseSubject"></div><div class="field"><label>Было</label><textarea id="cloudCaseBefore"></textarea></div><div class="field"><label>Что сделали</label><textarea id="cloudCaseProcess"></textarea></div><div class="field"><label>Результат</label><textarea id="cloudCaseResult" required></textarea></div><button class="btn" type="submit">Сохранить кейс</button></form></div>
+      <div class="panel"><h3>Добавить пример материала</h3><form class="form-grid" id="cloudAddExampleForm"><div class="field"><label>Название</label><input id="cloudExampleTitle" required></div><div class="field"><label>Предмет</label><input id="cloudExampleSubject"></div><div class="field"><label>Тип</label><select id="cloudExampleType"><option>Конспект</option><option>Домашнее задание</option><option>Разбор задачи</option><option>Презентация</option></select></div><div class="field"><label>Ссылка на файл / Яндекс.Диск</label><input id="cloudExampleUrl"></div><div class="field"><label>Описание</label><textarea id="cloudExampleDescription"></textarea></div><button class="btn" type="submit">Сохранить пример</button></form></div>
+      <div class="panel"><h3>Отзывы</h3><div class="item-list">${reviews.map(r=>`<article class="learning-item"><div class="top"><strong>${esc2(r.author)}</strong><span class="topic-chip">${'★'.repeat(Number(r.rating || 5))}</span></div><p>${esc2(r.text)}</p>${r.proof_url ? `<a class="btn small soft" target="_blank" href="${esc2(r.proof_url)}">Подтверждение</a>` : ''}<div class="row-actions"><button class="btn small red" data-cloud-delete-review="${r.id}">Удалить</button></div></article>`).join('') || '<div class="empty">Отзывов пока нет</div>'}</div></div>
+      <div class="panel"><h3>Кейсы</h3><div class="item-list">${cases.map(c=>`<article class="learning-item"><strong>${esc2(c.title)}</strong><p class="muted">${esc2(c.subject || '')}</p><p>${esc2(c.result_text || '')}</p><div class="row-actions"><button class="btn small red" data-cloud-delete-case="${c.id}">Удалить</button></div></article>`).join('') || '<div class="empty">Кейсов пока нет</div>'}</div></div>
+      <div class="panel"><h3>Примеры материалов</h3><div class="item-list">${examples.map(x=>`<article class="learning-item"><strong>${esc2(x.title)}</strong><p>${esc2(x.description || '')}</p>${x.file_url ? `<a class="btn small soft" target="_blank" href="${esc2(x.file_url)}">Открыть</a>` : ''}<div class="row-actions"><button class="btn small red" data-cloud-delete-example="${x.id}">Удалить</button></div></article>`).join('') || '<div class="empty">Примеров пока нет</div>'}</div></div>
+    </div>`;
   };
 
   async function renderTeacherPage(page) {
@@ -8090,18 +7990,30 @@
     if (page === 'teacherFinance') return renderTeacherFinanceFunctional(false);
     if (page === 'teacherPayments') return renderTeacherFinanceFunctional(true);
     if (page === 'teacherContent') return renderTeacherContentFunctional();
+    if (page === 'integrations') return renderYandexIntegrationsPage();
   }
   window.renderTeacherPage = renderTeacherPage;
 
-  // universal click fallback: data-page, buttons inside dynamic panels, slot actions.
+  async function renderYandexIntegrationsPage() {
+    if (!isAdmin()) return;
+    await ensureTeacherData();
+    const students = window.state?.students || [];
+    const sel = $id('yandexEmailStudentSelect');
+    if (sel) sel.innerHTML = '<option value="">Выберите ученика</option>' + students.map(s=>`<option value="${s.id}">${esc2(s.name)} · ${esc2(s.email || '')}</option>`).join('');
+  }
+
+  function enrichStudentYandexMaterials() {
+    const box = $id('studentMaterials');
+    const student = window.state?.studentProfile;
+    if (!box || !student || $id('studentYandexFolderCard')) return;
+    if (student.yandex_folder_url) {
+      box.insertAdjacentHTML('afterbegin', `<article class="learning-item" id="studentYandexFolderCard"><div class="top"><strong>Моя папка с материалами</strong><span class="topic-chip">Яндекс.Диск</span></div><p class="muted">Здесь преподаватель собирает конспекты, записи и файлы именно для вас.</p>${yandexBtn(student.yandex_folder_url)}</article>`);
+    }
+  }
+
   document.addEventListener('click', async function(e){
     const pageBtn = e.target.closest('[data-page]');
-    if (pageBtn && typeof window.setPage === 'function') {
-      e.preventDefault();
-      window.setPage(pageBtn.dataset.page);
-      return;
-    }
-
+    if (pageBtn && typeof window.setPage === 'function') { e.preventDefault(); window.setPage(pageBtn.dataset.page); return; }
 
     const editStudent = e.target.closest('[data-cloud-edit-student]');
     if (editStudent) {
@@ -8109,216 +8021,92 @@
       const id = editStudent.dataset.cloudEditStudent;
       const s = (window.state?.students || []).find(x => x.id === id);
       if (!s) return;
-      const name = prompt('Имя ученика', s.name || '');
-      if (name === null) return;
+      const name = prompt('Имя ученика', s.name || ''); if (name === null) return;
       const subject = prompt('Предмет / курс', s.subject || '') ?? (s.subject || '');
       const telegram = prompt('Telegram', s.telegram || '') ?? (s.telegram || '');
-      const { error } = await supabaseClient.from('student_profiles').update({ name, subject, telegram }).eq('id', id);
+      const yandex_folder_url = prompt('Ссылка на Яндекс-папку ученика', s.yandex_folder_url || '') ?? (s.yandex_folder_url || '');
+      const { error } = await supabaseClient.from('student_profiles').update({ name, subject, telegram, yandex_folder_url }).eq('id', id);
       if (error) return toast2(error.message, 'error');
-      await createGoogleSyncEvent('sheet_student_updated', { id, name, subject, telegram });
+      await logPlatformAction('student_updated', { id, name, subject });
       toast2('Карточка ученика обновлена.');
-      await renderTeacherStudentsFunctional();
+      await safeRefresh('teacherStudents');
       return;
     }
 
     const deleteStudent = e.target.closest('[data-cloud-delete-student]');
     if (deleteStudent) {
       e.preventDefault();
-      if (!confirm('Удалить ученика? Связанные ДЗ/материалы могут быть удалены настройками базы.')) return;
-      const id = deleteStudent.dataset.cloudDeleteStudent;
-      const { error } = await supabaseClient.from('student_profiles').delete().eq('id', id);
+      if (!confirm('Удалить ученика?')) return;
+      const { error } = await supabaseClient.from('student_profiles').delete().eq('id', deleteStudent.dataset.cloudDeleteStudent);
       if (error) return toast2(error.message, 'error');
-      await createGoogleSyncEvent('sheet_student_deleted', { id });
-      toast2('Ученик удалён.');
-      await renderTeacherStudentsFunctional();
-      return;
+      toast2('Ученик удалён.'); await safeRefresh('teacherStudents'); return;
     }
 
-        const addSlot = e.target.closest('[data-cloud-add-slot-date]');
-    if (addSlot && !e.target.closest('button')) {
+    const addSlot = e.target.closest('[data-cloud-add-slot-date]');
+    if (addSlot && !e.target.closest('button') && !e.target.closest('.slot-editor-chip')) {
       e.preventDefault();
-      const date = addSlot.dataset.cloudAddSlotDate;
-      const time = addSlot.dataset.cloudAddSlotTime;
-      const title = prompt('Название / тип слота', 'Занятие');
-      if (title === null) return;
+      const date = addSlot.dataset.cloudAddSlotDate, time = addSlot.dataset.cloudAddSlotTime;
       const price = Number(prompt('Цена', '2000') || 2000);
       const duration = Number(prompt('Длительность, минут', '60') || 60);
       const firstType = (window.state?.lessonTypes || [])[0];
       const row = { date, time, duration, status:'open', price, currency:'RUB', lesson_type_id:firstType?.id || null };
-      const { error, data } = await supabaseClient.from('slots').insert(row).select('*').single();
+      const { error } = await supabaseClient.from('slots').insert(row);
       if (error) return toast2(error.message, 'error');
-      await createGoogleSyncEvent('calendar_slot_created', { slot: data || row });
-      toast2('Слот добавлен в облако.');
-      await renderTeacherScheduleFunctional();
-      if (typeof loadPublicSlots === 'function') loadPublicSlots();
-      return;
+      toast2('Слот добавлен.'); await safeRefresh('teacherSchedule'); if (typeof loadPublicSlots === 'function') loadPublicSlots(); return;
     }
 
-    const del = e.target.closest('[data-cloud-slot-delete]');
-    if (del) {
-      e.preventDefault(); e.stopPropagation();
-      if (!confirm('Удалить слот?')) return;
-      const id = del.dataset.cloudSlotDelete;
-      const { error } = await supabaseClient.from('slots').delete().eq('id', id);
-      if (error) return toast2(error.message, 'error');
-      await createGoogleSyncEvent('calendar_slot_deleted', { slot_id:id });
-      toast2('Слот удалён.');
-      await renderTeacherScheduleFunctional();
-      if (typeof loadPublicSlots === 'function') loadPublicSlots();
-      return;
-    }
-
+    const delSlot = e.target.closest('[data-cloud-slot-delete]');
+    if (delSlot) { e.preventDefault(); e.stopPropagation(); if (!confirm('Удалить слот?')) return; const { error } = await supabaseClient.from('slots').delete().eq('id', delSlot.dataset.cloudSlotDelete); if (error) return toast2(error.message,'error'); toast2('Слот удалён.'); await safeRefresh('teacherSchedule'); if (typeof loadPublicSlots === 'function') loadPublicSlots(); return; }
     const complete = e.target.closest('[data-cloud-slot-complete]');
-    if (complete) {
-      e.preventDefault(); e.stopPropagation();
-      const id = complete.dataset.cloudSlotComplete;
-      const { error } = await supabaseClient.from('slots').update({ status:'completed' }).eq('id', id);
-      if (error) return toast2(error.message, 'error');
-      await createGoogleSyncEvent('calendar_slot_completed', { slot_id:id });
-      toast2('Занятие отмечено проведённым.');
-      await renderTeacherScheduleFunctional();
-      return;
-    }
-
-    const edit = e.target.closest('[data-cloud-slot-edit]');
-    if (edit) {
-      e.preventDefault(); e.stopPropagation();
-      const id = edit.dataset.cloudSlotEdit;
-      const date = prompt('Новая дата YYYY-MM-DD');
-      if (!date) return;
-      const time = prompt('Новое время HH:MM', '16:00');
-      if (!time) return;
-      const { error } = await supabaseClient.from('slots').update({ date, time, status:'rescheduled' }).eq('id', id);
-      if (error) return toast2(error.message, 'error');
-      await createGoogleSyncEvent('calendar_slot_updated', { slot_id:id, date, time });
-      toast2('Слот перенесён.');
-      await renderTeacherScheduleFunctional();
-      if (typeof loadPublicSlots === 'function') loadPublicSlots();
-      return;
-    }
-
-    const grade = e.target.closest('[data-cloud-grade-homework]');
-    if (grade) {
-      e.preventDefault();
-      if (typeof window.gradeHomework === 'function') return window.gradeHomework(grade.dataset.cloudGradeHomework);
-      return;
-    }
+    if (complete) { e.preventDefault(); e.stopPropagation(); const { error } = await supabaseClient.from('slots').update({ status:'completed' }).eq('id', complete.dataset.cloudSlotComplete); if (error) return toast2(error.message,'error'); toast2('Занятие отмечено проведённым.'); await safeRefresh('teacherSchedule'); return; }
+    const editSlot = e.target.closest('[data-cloud-slot-edit]');
+    if (editSlot) { e.preventDefault(); e.stopPropagation(); const date = prompt('Новая дата YYYY-MM-DD'); if (!date) return; const time = prompt('Новое время HH:MM', '16:00'); if (!time) return; const { error } = await supabaseClient.from('slots').update({ date, time, status:'rescheduled' }).eq('id', editSlot.dataset.cloudSlotEdit); if (error) return toast2(error.message,'error'); toast2('Слот перенесён.'); await safeRefresh('teacherSchedule'); if (typeof loadPublicSlots === 'function') loadPublicSlots(); return; }
 
     const approve = e.target.closest('[data-cloud-approve-booking]');
-    if (approve) {
-      e.preventDefault();
-      if (typeof window.approveBookingRequest === 'function') await window.approveBookingRequest(approve.dataset.cloudApproveBooking);
-      await renderTeacherBookingsFunctional();
-      return;
-    }
-
+    if (approve) { e.preventDefault(); if (typeof window.approveBookingRequest === 'function') await window.approveBookingRequest(approve.dataset.cloudApproveBooking); await safeRefresh('teacherBookings'); return; }
     const reject = e.target.closest('[data-cloud-reject-booking]');
-    if (reject) {
+    if (reject) { e.preventDefault(); if (typeof window.rejectBookingRequest === 'function') await window.rejectBookingRequest(reject.dataset.cloudRejectBooking); await safeRefresh('teacherBookings'); return; }
+    const grade = e.target.closest('[data-cloud-grade-homework]');
+    if (grade) { e.preventDefault(); if (typeof window.gradeHomework === 'function') await window.gradeHomework(grade.dataset.cloudGradeHomework); await safeRefresh('teacherHomeworkReview'); return; }
+
+    const delReview = e.target.closest('[data-cloud-delete-review]');
+    if (delReview) { e.preventDefault(); if (!confirm('Удалить отзыв?')) return; const { error } = await supabaseClient.from('reviews').delete().eq('id', delReview.dataset.cloudDeleteReview); if (error) return toast2(error.message,'error'); toast2('Отзыв удалён.'); await safeRefresh('teacherContent'); return; }
+    const delCase = e.target.closest('[data-cloud-delete-case]');
+    if (delCase) { e.preventDefault(); if (!confirm('Удалить кейс?')) return; const { error } = await supabaseClient.from('student_cases').delete().eq('id', delCase.dataset.cloudDeleteCase); if (error) return toast2(error.message,'error'); toast2('Кейс удалён.'); await safeRefresh('teacherContent'); return; }
+    const delExample = e.target.closest('[data-cloud-delete-example]');
+    if (delExample) { e.preventDefault(); if (!confirm('Удалить пример?')) return; const { error } = await supabaseClient.from('lesson_examples').delete().eq('id', delExample.dataset.cloudDeleteExample); if (error) return toast2(error.message,'error'); toast2('Пример удалён.'); await safeRefresh('teacherContent'); return; }
+
+    if (e.target.closest('#openYandexMailBtn')) {
       e.preventDefault();
-      if (typeof window.rejectBookingRequest === 'function') await window.rejectBookingRequest(reject.dataset.cloudRejectBooking);
-      await renderTeacherBookingsFunctional();
+      const st = (window.state?.students || []).find(x => x.id === $id('yandexEmailStudentSelect')?.value);
+      if (!st) return toast2('Выберите ученика', 'error');
+      const template = $id('yandexEmailTemplate')?.value || 'homework';
+      const subjects = { homework:'Напоминание о домашнем задании', lesson:'Напоминание о занятии', payment:'Напоминание об оплате занятий' };
+      const body = encodeURIComponent(`Здравствуйте! Напоминаю по занятиям. Материалы доступны в вашей личной папке: ${st.yandex_folder_url || ''}`);
+      window.location.href = `mailto:${st.email}?subject=${encodeURIComponent(subjects[template] || subjects.homework)}&body=${body}`;
       return;
     }
   }, true);
 
   document.addEventListener('submit', async function(e){
     const f = e.target;
-    if (f.id === 'cloudAddStudentForm') {
-      e.preventDefault();
-      const row = { name:$id('cloudStudentName').value.trim(), email:$id('cloudStudentEmail').value.trim(), subject:$id('cloudStudentCourse').value.trim(), telegram:$id('cloudStudentTelegram').value.trim() };
-      const { error } = await supabaseClient.from('student_profiles').insert(row);
-      if (error) return toast2(error.message,'error');
-      await createGoogleSyncEvent('sheet_student_created', row);
-      toast2('Ученик сохранён в облаке.');
-      await renderTeacherStudentsFunctional();
-      return;
-    }
-
-    if (f.id === 'cloudAddTopicForm') {
-      e.preventDefault();
-      const row = { title:$id('cloudTopicTitle').value.trim(), subject:$id('cloudTopicSubject').value.trim(), description:$id('cloudTopicDescription').value.trim() };
-      const { error } = await supabaseClient.from('topics').insert(row);
-      if (error) return toast2(error.message,'error');
-      await createGoogleSyncEvent('sheet_topic_created', row);
-      toast2('Тема сохранена.');
-      await renderTeacherMaterialsFunctional();
-      return;
-    }
-
-    if (f.id === 'cloudAddMaterialForm') {
-      e.preventDefault();
-      const row = { title:$id('cloudMaterialTitle').value.trim(), topic_id:$id('cloudMaterialTopic').value || null, student_id:$id('cloudMaterialStudent').value || null, file_url:$id('cloudMaterialUrl').value.trim(), description:$id('cloudMaterialDescription').value.trim() };
-      const { error } = await supabaseClient.from('materials').insert(row);
-      if (error) return toast2(error.message,'error');
-      await createGoogleSyncEvent('drive_material_created', row);
-      toast2('Материал сохранён.');
-      await renderTeacherMaterialsFunctional();
-      return;
-    }
-
-    if (f.id === 'cloudAddHomeworkForm') {
-      e.preventDefault();
-      const row = { student_id:$id('cloudHomeworkStudent').value, topic_id:$id('cloudHomeworkTopic').value || null, title:$id('cloudHomeworkTitle').value.trim(), description:$id('cloudHomeworkDescription').value.trim(), deadline:$id('cloudHomeworkDeadline').value || null, is_done:false };
-      const { error, data } = await supabaseClient.from('homework').insert(row).select('*').single();
-      if (error) return toast2(error.message,'error');
-      await createGoogleSyncEvent('sheet_homework_created', { homework:data || row });
-      await supabaseClient.from('notification_events').insert({ type:'homework_created', channel:'email', status:'pending', payload: row });
-      toast2('ДЗ выдано и сохранено в облаке.');
-      await renderTeacherHomeworkFunctional(false);
-      return;
-    }
-
-    if (f.id === 'cloudManualSlotForm') {
-      e.preventDefault();
-      const row = { date:$id('cloudSlotDate').value, time:$id('cloudSlotTime').value, lesson_type_id:$id('cloudSlotLessonType').value || null, duration:Number($id('cloudSlotDuration').value || 60), price:Number($id('cloudSlotPrice').value || 2000), status:'open', currency:'RUB' };
-      const { error, data } = await supabaseClient.from('slots').insert(row).select('*').single();
-      if (error) return toast2(error.message,'error');
-      await createGoogleSyncEvent('calendar_slot_created', { slot:data || row });
-      toast2('Слот добавлен в облако.');
-      await renderTeacherScheduleFunctional();
-      if (typeof loadPublicSlots === 'function') loadPublicSlots();
-      return;
-    }
-
-    if (f.id === 'cloudAddPaymentForm') {
-      e.preventDefault();
-      const row = { student_id:$id('cloudPaymentStudent').value || null, amount:Number($id('cloudPaymentAmount').value || 0), status:$id('cloudPaymentStatus').value, notes:$id('cloudPaymentComment').value.trim(), currency:'RUB' };
-      const { error, data } = await supabaseClient.from('payments').insert(row).select('*').single();
-      if (error) return toast2(error.message,'error');
-      await createGoogleSyncEvent('sheet_payment_created', { payment:data || row });
-      toast2('Оплата сохранена.');
-      await renderTeacherFinanceFunctional(true);
-      return;
-    }
-
-    if (f.id === 'cloudAddLessonTypeForm') {
-      e.preventDefault();
-      const row = { title:$id('cloudLessonTypeTitle').value.trim(), subject:$id('cloudLessonTypeSubject').value.trim(), duration:Number($id('cloudLessonTypeDuration').value || 60), price:Number($id('cloudLessonTypePrice').value || 2000), currency:'RUB', format:'online', is_active:true };
-      const { error } = await supabaseClient.from('lesson_types').insert(row);
-      if (error) return toast2(error.message,'error');
-      await createGoogleSyncEvent('sheet_lesson_type_created', row);
-      toast2('Тип занятия сохранён.');
-      await renderTeacherFinanceFunctional(false);
-      return;
-    }
-
-    if (f.id === 'cloudAddReviewForm') {
-      e.preventDefault();
-      const row = { author:$id('cloudReviewAuthor').value.trim(), rating:Number($id('cloudReviewRating').value || 5), text:$id('cloudReviewText').value.trim(), proof_url:$id('cloudReviewProofUrl').value.trim(), is_published:true };
-      const { error } = await supabaseClient.from('reviews').insert(row);
-      if (error) return toast2(error.message,'error');
-      await createGoogleSyncEvent('sheet_review_created', row);
-      toast2('Отзыв сохранён.');
-      await renderTeacherContentFunctional();
-      return;
-    }
+    if (f.id === 'cloudAddStudentForm') { e.preventDefault(); const row = { name:$id('cloudStudentName').value.trim(), email:$id('cloudStudentEmail').value.trim(), subject:$id('cloudStudentCourse').value.trim(), telegram:$id('cloudStudentTelegram').value.trim(), yandex_folder_url:$id('cloudStudentYandexFolder').value.trim() || null }; const { error } = await supabaseClient.from('student_profiles').insert(row); if (error) return toast2(error.message,'error'); toast2('Ученик сохранён.'); await safeRefresh('teacherStudents'); return; }
+    if (f.id === 'cloudAddTopicForm') { e.preventDefault(); const row = { title:$id('cloudTopicTitle').value.trim(), subject:$id('cloudTopicSubject').value.trim(), description:$id('cloudTopicDescription').value.trim() }; const { error } = await supabaseClient.from('topics').insert(row); if (error) return toast2(error.message,'error'); toast2('Тема сохранена.'); await safeRefresh('teacherMaterials'); return; }
+    if (f.id === 'cloudAddMaterialForm') { e.preventDefault(); const row = { title:$id('cloudMaterialTitle').value.trim(), topic_id:$id('cloudMaterialTopic').value || null, student_id:$id('cloudMaterialStudent').value || null, file_url:$id('cloudMaterialUrl').value.trim(), description:$id('cloudMaterialDescription').value.trim() }; const { error } = await supabaseClient.from('materials').insert(row); if (error) return toast2(error.message,'error'); toast2('Материал сохранён.'); await safeRefresh('teacherMaterials'); return; }
+    if (f.id === 'cloudAddHomeworkForm') { e.preventDefault(); const row = { student_id:$id('cloudHomeworkStudent').value, topic_id:$id('cloudHomeworkTopic').value || null, title:$id('cloudHomeworkTitle').value.trim(), description:$id('cloudHomeworkDescription').value.trim(), deadline:$id('cloudHomeworkDeadline').value || null, is_done:false }; const { error } = await supabaseClient.from('homework').insert(row); if (error) return toast2(error.message,'error'); await supabaseClient.from('notification_events').insert({ type:'homework_created', channel:'internal', status:'pending', payload: row }).catch(()=>{}); toast2('ДЗ выдано.'); await safeRefresh('teacherHomework'); return; }
+    if (f.id === 'cloudManualSlotForm') { e.preventDefault(); const row = { date:$id('cloudSlotDate').value, time:$id('cloudSlotTime').value, lesson_type_id:$id('cloudSlotLessonType').value || null, duration:Number($id('cloudSlotDuration').value || 60), price:Number($id('cloudSlotPrice').value || 2000), status:'open', currency:'RUB' }; const { error } = await supabaseClient.from('slots').insert(row); if (error) return toast2(error.message,'error'); toast2('Слот добавлен.'); await safeRefresh('teacherSchedule'); if (typeof loadPublicSlots === 'function') loadPublicSlots(); return; }
+    if (f.id === 'cloudAddPaymentForm') { e.preventDefault(); const row = { student_id:$id('cloudPaymentStudent').value || null, amount:Number($id('cloudPaymentAmount').value || 0), status:$id('cloudPaymentStatus').value, notes:$id('cloudPaymentComment').value.trim(), currency:'RUB' }; const { error } = await supabaseClient.from('payments').insert(row); if (error) return toast2(error.message,'error'); toast2('Оплата сохранена.'); await safeRefresh('teacherPayments'); return; }
+    if (f.id === 'cloudAddLessonTypeForm') { e.preventDefault(); const row = { title:$id('cloudLessonTypeTitle').value.trim(), subject:$id('cloudLessonTypeSubject').value.trim(), duration:Number($id('cloudLessonTypeDuration').value || 60), price:Number($id('cloudLessonTypePrice').value || 2000), currency:'RUB', format:'online', is_active:true }; const { error } = await supabaseClient.from('lesson_types').insert(row); if (error) return toast2(error.message,'error'); toast2('Тип занятия сохранён.'); await safeRefresh('teacherFinance'); return; }
+    if (f.id === 'cloudAddReviewForm') { e.preventDefault(); const row = { author:$id('cloudReviewAuthor').value.trim(), rating:Number($id('cloudReviewRating').value || 5), text:$id('cloudReviewText').value.trim(), proof_url:$id('cloudReviewProofUrl').value.trim(), is_published:true }; const { error } = await supabaseClient.from('reviews').insert(row); if (error) return toast2(error.message,'error'); toast2('Отзыв сохранён.'); await safeRefresh('teacherContent'); return; }
+    if (f.id === 'cloudAddCaseForm') { e.preventDefault(); const row = { title:$id('cloudCaseTitle').value.trim(), subject:$id('cloudCaseSubject').value.trim(), before_text:$id('cloudCaseBefore').value.trim(), process_text:$id('cloudCaseProcess').value.trim(), result_text:$id('cloudCaseResult').value.trim(), is_published:true }; const { error } = await supabaseClient.from('student_cases').insert(row); if (error) return toast2(error.message,'error'); toast2('Кейс сохранён.'); await safeRefresh('teacherContent'); return; }
+    if (f.id === 'cloudAddExampleForm') { e.preventDefault(); const row = { title:$id('cloudExampleTitle').value.trim(), subject:$id('cloudExampleSubject').value.trim(), type:$id('cloudExampleType').value, file_url:$id('cloudExampleUrl').value.trim(), description:$id('cloudExampleDescription').value.trim(), is_published:true }; const { error } = await supabaseClient.from('lesson_examples').insert(row); if (error) return toast2(error.message,'error'); toast2('Пример материала сохранён.'); await safeRefresh('teacherContent'); return; }
   }, true);
 
   const oldSetPage = window.setPage;
   if (typeof oldSetPage === 'function') {
     window.setPage = function(page) {
       oldSetPage(page);
-      setTimeout(() => renderTeacherPage(page), 120);
+      setTimeout(() => { renderTeacherPage(page); if (page === 'studentCabinet') enrichStudentYandexMaterials(); }, 140);
     };
   }
 })();

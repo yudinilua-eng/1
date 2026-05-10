@@ -8446,6 +8446,304 @@
   restoreStudentSession().catch(console.warn);
 })();
 
+
+/* ===== PLATFORM PATCH v8: instant updates, restore current page, safer student access RPCs ===== */
+(function(){
+  if (window.__platformPatchV8Ready) return;
+  window.__platformPatchV8Ready = true;
+
+  const $id = (id) => document.getElementById(id);
+  const esc = (v) => String(v ?? '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
+  const val = (id, fallback='') => { const el=$id(id); return el && 'value' in el ? el.value : fallback; };
+  const trimVal = (id, fallback='') => String(val(id, fallback) || '').trim();
+  const toast8 = (msg, type='success') => typeof window.toast === 'function' ? window.toast(msg, type) : alert(msg);
+  const currentPage = () => localStorage.getItem('platform_current_page') || location.hash.replace(/^#\/?/, '') || 'home';
+  const isTeacherPage = (p) => ['teacherCabinet','teacherStudents','teacherMaterials','teacherHomework','teacherHomeworkReview','teacherSchedule','teacherBookings','teacherFinance','teacherPayments','teacherContent'].includes(p);
+  const randomPassword = (len=10) => {
+    const chars='ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@#$%';
+    let out='';
+    const bytes=new Uint8Array(len);
+    crypto.getRandomValues(bytes);
+    for (const b of bytes) out += chars[b % chars.length];
+    return out;
+  };
+  const normalizeLogin = (s) => String(s||'').trim().toLowerCase().replace(/\s+/g,'_').replace(/[^a-z0-9._-]/g,'');
+  async function sha256(text) {
+    const data = new TextEncoder().encode(String(text || ''));
+    const hash = await crypto.subtle.digest('SHA-256', data);
+    return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('');
+  }
+
+  // 1) Запоминаем страницу и позицию прокрутки. После перезагрузки возвращаем туда же.
+  const oldSetPage = window.setPage;
+  if (typeof oldSetPage === 'function' && !window.__platformSetPageV8Wrapped) {
+    window.__platformSetPageV8Wrapped = true;
+    window.setPage = function(page){
+      try {
+        const prev = currentPage();
+        if (prev) sessionStorage.setItem('platform_scroll_' + prev, String(window.scrollY || 0));
+        localStorage.setItem('platform_current_page', page);
+        history.replaceState(null, '', '#/' + page);
+      } catch(_) {}
+      const result = oldSetPage(page);
+      setTimeout(() => {
+        const saved = Number(sessionStorage.getItem('platform_scroll_' + page) || 0);
+        if (saved > 0) window.scrollTo({ top: saved, behavior: 'instant' in window ? 'instant' : 'auto' });
+      }, 220);
+      return result;
+    };
+  }
+  let scrollTimer;
+  window.addEventListener('scroll', () => {
+    clearTimeout(scrollTimer);
+    scrollTimer = setTimeout(() => {
+      try { sessionStorage.setItem('platform_scroll_' + currentPage(), String(window.scrollY || 0)); } catch(_) {}
+    }, 120);
+  }, { passive:true });
+  setTimeout(async () => {
+    const saved = currentPage();
+    if (!saved || saved === 'home') return;
+    // Даём Supabase Auth и локальной студенческой сессии восстановиться.
+    if (typeof window.restoreStudentSession === 'function') await window.restoreStudentSession().catch(()=>{});
+    if (typeof window.setPage === 'function') window.setPage(saved);
+  }, 900);
+
+  // 2) Мгновенное обновление данных: локально после действий + Realtime между вкладками/устройствами.
+  let refreshLock = null;
+  async function refreshVisible(reason='update') {
+    const page = currentPage();
+    if (refreshLock) return refreshLock;
+    refreshLock = (async () => {
+      try {
+        if (isTeacherPage(page) && document.body.classList.contains('is-admin')) {
+          if (typeof window.safeRefresh === 'function') await window.safeRefresh(page);
+          else if (typeof window.loadTeacherCabinet === 'function') await window.loadTeacherCabinet();
+        }
+        if (page === 'studentCabinet' && document.body.classList.contains('is-student') && typeof window.loadStudentCabinet === 'function') {
+          await window.loadStudentCabinet();
+        }
+        if ((page === 'schedule' || reason === 'slots') && typeof window.loadPublicSlots === 'function') {
+          await window.loadPublicSlots();
+        }
+      } catch(e) {
+        console.warn('refreshVisible failed', e);
+      } finally {
+        refreshLock = null;
+      }
+    })();
+    return refreshLock;
+  }
+  window.refreshVisible = refreshVisible;
+
+  function startRealtime() {
+    if (!window.supabaseClient || window.__platformRealtimeV8) return;
+    window.__platformRealtimeV8 = true;
+    try {
+      window.supabaseClient.channel('platform-live-v8')
+        .on('postgres_changes', { event:'*', schema:'public', table:'student_profiles' }, () => refreshVisible('students'))
+        .on('postgres_changes', { event:'*', schema:'public', table:'student_credentials' }, () => refreshVisible('credentials'))
+        .on('postgres_changes', { event:'*', schema:'public', table:'materials' }, () => refreshVisible('materials'))
+        .on('postgres_changes', { event:'*', schema:'public', table:'homework' }, () => refreshVisible('homework'))
+        .on('postgres_changes', { event:'*', schema:'public', table:'slots' }, () => refreshVisible('slots'))
+        .on('postgres_changes', { event:'*', schema:'public', table:'payments' }, () => refreshVisible('payments'))
+        .on('postgres_changes', { event:'*', schema:'public', table:'reviews' }, () => refreshVisible('content'))
+        .on('postgres_changes', { event:'*', schema:'public', table:'student_cases' }, () => refreshVisible('content'))
+        .on('postgres_changes', { event:'*', schema:'public', table:'lesson_examples' }, () => refreshVisible('content'))
+        .subscribe((status) => console.log('[platform realtime]', status));
+    } catch(e) {
+      console.warn('Realtime disabled/skipped', e);
+    }
+  }
+  setTimeout(startRealtime, 1200);
+
+  // 3) Логины учеников через RPC. Это исправляет RLS-ошибку при вставке в student_credentials.
+  async function listCredentials(ids) {
+    if (!ids.length) return [];
+    const rpc = await window.supabaseClient.rpc('list_student_credentials_for_teacher', { p_student_ids: ids }).catch(e => ({ error:e }));
+    if (!rpc.error && Array.isArray(rpc.data)) return rpc.data;
+    console.warn('credentials RPC fallback', rpc.error);
+    const direct = await window.supabaseClient.from('student_credentials').select('student_id, login_name, is_active, updated_at').in('student_id', ids);
+    if (direct.error) { console.warn('credentials direct failed', direct.error); return []; }
+    return direct.data || [];
+  }
+
+  async function createStudentAccess(row) {
+    const args = {
+      p_name: row.name,
+      p_login_name: row.login_name,
+      p_password_hash: row.password_hash,
+      p_email: row.email || null,
+      p_subject: row.subject || null,
+      p_telegram: row.telegram || null,
+      p_yandex_folder_url: row.yandex_folder_url || null,
+      p_notes: row.notes || null
+    };
+    const { data, error } = await window.supabaseClient.rpc('teacher_create_student_access', args);
+    if (error) throw error;
+    return data;
+  }
+
+  async function resetStudentPassword(studentId, passHash) {
+    const { error } = await window.supabaseClient.rpc('teacher_reset_student_password', { p_student_id: studentId, p_password_hash: passHash });
+    if (error) throw error;
+  }
+
+  async function deleteStudentAccess(studentId) {
+    const { error } = await window.supabaseClient.rpc('teacher_delete_student_access', { p_student_id: studentId });
+    if (error) throw error;
+  }
+
+  // Студенческий вход тоже пробуем через RPC, чтобы не требовался SELECT по таблице паролей.
+  window.studentLoginByName = async function(login, password) {
+    login = normalizeLogin(login);
+    if (!login || !password) throw new Error('Введите имя и пароль.');
+    const passHash = await sha256(password);
+    let studentId = null;
+    const rpc = await window.supabaseClient.rpc('student_login_by_password', { p_login_name: login, p_password_hash: passHash }).catch(e => ({ error:e }));
+    if (!rpc.error && rpc.data) studentId = rpc.data;
+    if (!studentId) {
+      // Совместимость со старой схемой, если v8 SQL ещё не выполнен.
+      const { data, error } = await window.supabaseClient.from('student_credentials').select('student_id, login_name, password_hash, is_active').eq('login_name', login).maybeSingle();
+      if (error) throw error;
+      if (!data || data.is_active === false || data.password_hash !== passHash) throw new Error('Неверное имя или пароль.');
+      studentId = data.student_id;
+    }
+    localStorage.setItem('student_session_id', studentId);
+    if (typeof window.restoreStudentSession === 'function') await window.restoreStudentSession();
+    toast8('Вход выполнен', 'success');
+    window.setPage?.('studentCabinet');
+  };
+
+  // Переопределяем форму учеников на v8-ID, чтобы старые submit-обработчики v7 не перехватывали событие.
+  window.renderTeacherStudentsFunctional = async function(){
+    if (typeof window.ensureTeacherData === 'function') await window.ensureTeacherData(true);
+    const mount = $id('teacherStudentsMount');
+    if (!mount) return;
+    const students = window.state?.students || [];
+    mount.innerHTML = `
+      <div class="teacher-tool-grid">
+        <div class="panel">
+          <h3>Создать ученика и доступ</h3>
+          <p class="muted">Вы сами задаёте имя входа и пароль. Ученик входит без email.</p>
+          <form class="form-grid" id="v8AddStudentLoginForm">
+            <div class="field"><label>Имя ученика</label><input id="v8StudentName" required placeholder="Иван Петров"></div>
+            <div class="grid-2">
+              <div class="field"><label>Имя для входа</label><input id="v8StudentLogin" required placeholder="ivan_8class"></div>
+              <div class="field"><label>Пароль</label><input id="v8StudentPassword" required placeholder="задайте или сгенерируйте"></div>
+            </div>
+            <button class="btn small soft" type="button" id="v8GeneratePassword">Сгенерировать пароль</button>
+            <div class="field"><label>Email, необязательно</label><input id="v8StudentEmail" type="email" placeholder="для связи, не для входа"></div>
+            <div class="field"><label>Курс / предмет</label><input id="v8StudentSubject" placeholder="Математика, 8 класс"></div>
+            <div class="field"><label>Telegram</label><input id="v8StudentTelegram" placeholder="@username"></div>
+            <div class="field"><label>Личная Яндекс-папка</label><input id="v8StudentYandex" placeholder="https://disk.yandex.ru/..."></div>
+            <div class="field"><label>Заметки</label><textarea id="v8StudentNotes"></textarea></div>
+            <button class="btn" type="submit">Создать доступ ученику</button>
+          </form>
+        </div>
+        <div class="panel">
+          <div class="top-actions"><h3>Ученики и доступы</h3><button class="btn small soft" id="v8RefreshStudents" type="button">Обновить</button></div>
+          <div class="search-row"><input id="v8StudentSearch" placeholder="Поиск по имени, логину, предмету"><select id="v8StudentSubjectFilter"><option value="">Все предметы</option><option>Математика</option><option>Физика</option><option>Химия</option></select></div>
+          <div class="item-list" id="v8StudentsList"><div class="empty">Загрузка...</div></div>
+        </div>
+      </div>`;
+    const creds = await listCredentials(students.map(s => s.id).filter(Boolean));
+    const credByStudent = Object.fromEntries(creds.map(c => [c.student_id, c]));
+    const renderList = () => {
+      const q = trimVal('v8StudentSearch').toLowerCase();
+      const subj = val('v8StudentSubjectFilter');
+      const filtered = students.filter(s => {
+        const c = credByStudent[s.id] || {};
+        const hay = `${s.name||''} ${s.email||''} ${s.subject||''} ${c.login_name||''}`.toLowerCase();
+        return (!q || hay.includes(q)) && (!subj || String(s.subject||'').includes(subj));
+      });
+      const list = $id('v8StudentsList');
+      if (!list) return;
+      list.innerHTML = filtered.map(s => {
+        const c = credByStudent[s.id];
+        return `<article class="learning-item">
+          <div class="top"><strong>${esc(s.name)}</strong><span class="topic-chip">${esc(s.subject || 'курс не указан')}</span></div>
+          <p class="muted">${s.email ? esc(s.email) + ' · ' : ''}${s.telegram ? esc(s.telegram) + ' · ' : ''}логин: <strong>${esc(c?.login_name || 'не создан')}</strong></p>
+          ${s.yandex_folder_url ? `<p class="muted">Материалы: личная Яндекс-папка</p><a class="btn small soft" target="_blank" rel="noopener" href="${esc(s.yandex_folder_url)}">Открыть папку</a>` : '<p class="muted">Яндекс-папка не указана</p>'}
+          <div class="row-actions">
+            <button class="btn small soft" data-v8-reset-pass="${s.id}">Новый пароль</button>
+            <button class="btn small soft" data-v8-edit-student="${s.id}">Изменить</button>
+            <button class="btn small red" data-v8-delete-student="${s.id}">Удалить</button>
+          </div>
+        </article>`;
+      }).join('') || '<div class="empty">Пока нет учеников</div>';
+    };
+    renderList();
+    $id('v8GeneratePassword')?.addEventListener('click', () => { const el=$id('v8StudentPassword'); if (el) el.value=randomPassword(10); });
+    $id('v8StudentSearch')?.addEventListener('input', renderList);
+    $id('v8StudentSubjectFilter')?.addEventListener('change', renderList);
+    $id('v8RefreshStudents')?.addEventListener('click', () => refreshVisible('students'));
+  };
+
+  document.addEventListener('submit', async function(e){
+    const f = e.target;
+    if (!f || f.id !== 'v8AddStudentLoginForm') return;
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    try {
+      const login = normalizeLogin(trimVal('v8StudentLogin'));
+      const pass = trimVal('v8StudentPassword');
+      if (!login || !pass) throw new Error('Укажите имя входа и пароль.');
+      const row = {
+        name: trimVal('v8StudentName'),
+        login_name: login,
+        password_hash: await sha256(pass),
+        email: trimVal('v8StudentEmail') || `${login}@student.local`,
+        subject: trimVal('v8StudentSubject'),
+        telegram: trimVal('v8StudentTelegram'),
+        yandex_folder_url: trimVal('v8StudentYandex') || null,
+        notes: trimVal('v8StudentNotes')
+      };
+      await createStudentAccess(row);
+      toast8(`Доступ создан. Логин: ${login} · пароль: ${pass}`, 'success');
+      f.reset();
+      await refreshVisible('students');
+    } catch(err) {
+      toast8('Не удалось создать доступ: ' + (err.message || err), 'error');
+    }
+  }, true);
+
+  document.addEventListener('click', async function(e){
+    const reset = e.target.closest('[data-v8-reset-pass]');
+    if (reset) {
+      e.preventDefault(); e.stopImmediatePropagation();
+      const pass = prompt('Новый пароль для ученика', randomPassword(10));
+      if (!pass) return;
+      try { await resetStudentPassword(reset.dataset.v8ResetPass, await sha256(pass)); toast8('Новый пароль: ' + pass, 'success'); await refreshVisible('credentials'); }
+      catch(err) { toast8('Не удалось обновить пароль: ' + (err.message || err), 'error'); }
+      return;
+    }
+    const edit = e.target.closest('[data-v8-edit-student]');
+    if (edit) {
+      e.preventDefault(); e.stopImmediatePropagation();
+      const id = edit.dataset.v8EditStudent;
+      const s = (window.state?.students || []).find(x => x.id === id);
+      if (!s) return;
+      const name = prompt('Имя ученика', s.name || ''); if (name === null) return;
+      const subject = prompt('Предмет / курс', s.subject || '') ?? (s.subject || '');
+      const telegram = prompt('Telegram', s.telegram || '') ?? (s.telegram || '');
+      const yandex_folder_url = prompt('Ссылка на Яндекс-папку ученика', s.yandex_folder_url || '') ?? (s.yandex_folder_url || '');
+      const { error } = await window.supabaseClient.from('student_profiles').update({ name, subject, telegram, yandex_folder_url }).eq('id', id);
+      if (error) return toast8(error.message, 'error');
+      toast8('Карточка ученика обновлена');
+      await refreshVisible('students');
+      return;
+    }
+    const del = e.target.closest('[data-v8-delete-student]');
+    if (del) {
+      e.preventDefault(); e.stopImmediatePropagation();
+      if (!confirm('Удалить ученика и его логин?')) return;
+      try { await deleteStudentAccess(del.dataset.v8DeleteStudent); toast8('Ученик удалён'); await refreshVisible('students'); }
+      catch(err) { toast8('Не удалось удалить ученика: ' + (err.message || err), 'error'); }
+      return;
+    }
+  }, true);
+})();
+
 </script>
 </body>
 </html>

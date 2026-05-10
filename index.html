@@ -3855,6 +3855,114 @@
       .content { padding: 18px; }
       .grid-2, .grid-3, .grid-4, .search-row { grid-template-columns: 1fr; }
     }
+
+    /* ===== PLATFORM PATCH v9: stable compact sidebar, no empty flyout panels ===== */
+    body .app {
+      display: grid !important;
+      grid-template-columns: 310px minmax(0, 1fr) !important;
+      align-items: start !important;
+    }
+    body aside.sidebar {
+      position: sticky !important;
+      top: 0 !important;
+      height: 100vh !important;
+      max-height: 100vh !important;
+      overflow-y: auto !important;
+      overflow-x: hidden !important;
+      display: block !important;
+    }
+    body aside.sidebar .menu-accordion {
+      display: grid !important;
+      grid-template-columns: 1fr !important;
+      gap: 10px !important;
+      overflow: visible !important;
+      margin-bottom: 92px !important;
+    }
+    body aside.sidebar .menu-group {
+      display: block !important;
+      position: static !important;
+      height: auto !important;
+      min-height: 0 !important;
+      max-height: none !important;
+      overflow: hidden !important;
+      border: 1px solid var(--line) !important;
+      border-radius: 18px !important;
+      background: rgba(248,251,255,.84) !important;
+    }
+    body aside.sidebar .menu-group > summary {
+      display: flex !important;
+      align-items: center !important;
+      justify-content: space-between !important;
+      min-height: 54px !important;
+      cursor: pointer !important;
+    }
+    body aside.sidebar .menu-group > .menu-group-body {
+      position: static !important;
+      min-width: 0 !important;
+      height: auto !important;
+      min-height: 0 !important;
+      max-height: 0 !important;
+      overflow: hidden !important;
+      display: grid !important;
+      grid-template-columns: 1fr !important;
+      gap: 4px !important;
+      padding: 0 8px !important;
+      opacity: 0 !important;
+      pointer-events: none !important;
+      border: 0 !important;
+      box-shadow: none !important;
+      background: transparent !important;
+      transition: max-height .18s ease, opacity .18s ease, padding .18s ease !important;
+    }
+    body aside.sidebar .menu-group[open] > .menu-group-body,
+    body aside.sidebar .menu-group.active-branch > .menu-group-body,
+    body aside.sidebar .menu-group.flyout-open > .menu-group-body {
+      max-height: 520px !important;
+      overflow: visible !important;
+      padding: 0 8px 10px !important;
+      opacity: 1 !important;
+      pointer-events: auto !important;
+    }
+    body aside.sidebar .menu-group.empty-menu-group > .menu-group-body {
+      display: none !important;
+      max-height: 0 !important;
+      padding: 0 !important;
+    }
+    body aside.sidebar .menu-group .nav-btn {
+      display: flex !important;
+      width: 100% !important;
+      justify-content: flex-start !important;
+      min-height: 40px !important;
+      opacity: 1 !important;
+      visibility: visible !important;
+    }
+    body:not(.is-logged) aside.sidebar .logged-only,
+    body:not(.is-admin) aside.sidebar .admin-only,
+    body:not(.is-student) aside.sidebar .student-only {
+      display: none !important;
+    }
+    body.is-logged aside.sidebar .logged-only,
+    body.is-admin aside.sidebar .admin-only,
+    body.is-student aside.sidebar .student-only {
+      display: flex !important;
+    }
+    body.is-admin aside.sidebar details.admin-only,
+    body.is-student aside.sidebar details.student-only {
+      display: block !important;
+    }
+    @media (max-width: 980px) {
+      body .app { grid-template-columns: 1fr !important; }
+      body aside.sidebar {
+        position: fixed !important;
+        inset: 0 auto 0 0 !important;
+        width: min(86vw, 340px) !important;
+        transform: translateX(-105%) !important;
+        transition: transform .2s ease !important;
+        z-index: 3000 !important;
+      }
+      body.sidebar-open aside.sidebar { transform: translateX(0) !important; }
+    }
+
   </style>
 </head>
 
@@ -8090,16 +8198,16 @@
 
   document.addEventListener('submit', async function(e){
     const f = e.target;
-    if (f.id === 'cloudAddStudentForm') { e.preventDefault(); const row = { name:$id('cloudStudentName').value.trim(), email:$id('cloudStudentEmail').value.trim(), subject:$id('cloudStudentCourse').value.trim(), telegram:$id('cloudStudentTelegram').value.trim(), yandex_folder_url:$id('cloudStudentYandexFolder').value.trim() || null }; const { error } = await supabaseClient.from('student_profiles').insert(row); if (error) return toast2(error.message,'error'); toast2('Ученик сохранён.'); await safeRefresh('teacherStudents'); return; }
-    if (f.id === 'cloudAddTopicForm') { e.preventDefault(); const row = { title:$id('cloudTopicTitle').value.trim(), subject:$id('cloudTopicSubject').value.trim(), description:$id('cloudTopicDescription').value.trim() }; const { error } = await supabaseClient.from('topics').insert(row); if (error) return toast2(error.message,'error'); toast2('Тема сохранена.'); await safeRefresh('teacherMaterials'); return; }
-    if (f.id === 'cloudAddMaterialForm') { e.preventDefault(); const row = { title:$id('cloudMaterialTitle').value.trim(), topic_id:$id('cloudMaterialTopic').value || null, student_id:$id('cloudMaterialStudent').value || null, file_url:$id('cloudMaterialUrl').value.trim(), description:$id('cloudMaterialDescription').value.trim() }; const { error } = await supabaseClient.from('materials').insert(row); if (error) return toast2(error.message,'error'); toast2('Материал сохранён.'); await safeRefresh('teacherMaterials'); return; }
-    if (f.id === 'cloudAddHomeworkForm') { e.preventDefault(); const row = { student_id:$id('cloudHomeworkStudent').value, topic_id:$id('cloudHomeworkTopic').value || null, title:$id('cloudHomeworkTitle').value.trim(), description:$id('cloudHomeworkDescription').value.trim(), deadline:$id('cloudHomeworkDeadline').value || null, is_done:false }; const { error } = await supabaseClient.from('homework').insert(row); if (error) return toast2(error.message,'error'); await supabaseClient.from('notification_events').insert({ type:'homework_created', channel:'internal', status:'pending', payload: row }).catch(()=>{}); toast2('ДЗ выдано.'); await safeRefresh('teacherHomework'); return; }
-    if (f.id === 'cloudManualSlotForm') { e.preventDefault(); const row = { date:$id('cloudSlotDate').value, time:$id('cloudSlotTime').value, lesson_type_id:$id('cloudSlotLessonType').value || null, duration:Number($id('cloudSlotDuration').value || 60), price:Number($id('cloudSlotPrice').value || 2000), status:'open', currency:'RUB' }; const { error } = await supabaseClient.from('slots').insert(row); if (error) return toast2(error.message,'error'); toast2('Слот добавлен.'); await safeRefresh('teacherSchedule'); if (typeof loadPublicSlots === 'function') loadPublicSlots(); return; }
-    if (f.id === 'cloudAddPaymentForm') { e.preventDefault(); const row = { student_id:$id('cloudPaymentStudent').value || null, amount:Number($id('cloudPaymentAmount').value || 0), status:$id('cloudPaymentStatus').value, notes:$id('cloudPaymentComment').value.trim(), currency:'RUB' }; const { error } = await supabaseClient.from('payments').insert(row); if (error) return toast2(error.message,'error'); toast2('Оплата сохранена.'); await safeRefresh('teacherPayments'); return; }
-    if (f.id === 'cloudAddLessonTypeForm') { e.preventDefault(); const row = { title:$id('cloudLessonTypeTitle').value.trim(), subject:$id('cloudLessonTypeSubject').value.trim(), duration:Number($id('cloudLessonTypeDuration').value || 60), price:Number($id('cloudLessonTypePrice').value || 2000), currency:'RUB', format:'online', is_active:true }; const { error } = await supabaseClient.from('lesson_types').insert(row); if (error) return toast2(error.message,'error'); toast2('Тип занятия сохранён.'); await safeRefresh('teacherFinance'); return; }
-    if (f.id === 'cloudAddReviewForm') { e.preventDefault(); const row = { author:$id('cloudReviewAuthor').value.trim(), rating:Number($id('cloudReviewRating').value || 5), text:$id('cloudReviewText').value.trim(), proof_url:$id('cloudReviewProofUrl').value.trim(), is_published:true }; const { error } = await supabaseClient.from('reviews').insert(row); if (error) return toast2(error.message,'error'); toast2('Отзыв сохранён.'); await safeRefresh('teacherContent'); return; }
-    if (f.id === 'cloudAddCaseForm') { e.preventDefault(); const row = { title:$id('cloudCaseTitle').value.trim(), subject:$id('cloudCaseSubject').value.trim(), before_text:$id('cloudCaseBefore').value.trim(), process_text:$id('cloudCaseProcess').value.trim(), result_text:$id('cloudCaseResult').value.trim(), is_published:true }; const { error } = await supabaseClient.from('student_cases').insert(row); if (error) return toast2(error.message,'error'); toast2('Кейс сохранён.'); await safeRefresh('teacherContent'); return; }
-    if (f.id === 'cloudAddExampleForm') { e.preventDefault(); const row = { title:$id('cloudExampleTitle').value.trim(), subject:$id('cloudExampleSubject').value.trim(), type:$id('cloudExampleType').value, file_url:$id('cloudExampleUrl').value.trim(), description:$id('cloudExampleDescription').value.trim(), is_published:true }; const { error } = await supabaseClient.from('lesson_examples').insert(row); if (error) return toast2(error.message,'error'); toast2('Пример материала сохранён.'); await safeRefresh('teacherContent'); return; }
+    if (f.id === 'cloudAddStudentForm') { e.preventDefault(); const row = { name:($id('cloudStudentName')?.value || '').trim(), email:($id('cloudStudentEmail')?.value || '').trim(), subject:($id('cloudStudentCourse')?.value || '').trim(), telegram:($id('cloudStudentTelegram')?.value || '').trim(), yandex_folder_url:($id('cloudStudentYandexFolder')?.value || '').trim() || null }; const { error } = await supabaseClient.from('student_profiles').insert(row); if (error) return toast2(error.message,'error'); toast2('Ученик сохранён.'); await safeRefresh('teacherStudents'); return; }
+    if (f.id === 'cloudAddTopicForm') { e.preventDefault(); const row = { title:($id('cloudTopicTitle')?.value || '').trim(), subject:($id('cloudTopicSubject')?.value || '').trim(), description:($id('cloudTopicDescription')?.value || '').trim() }; const { error } = await supabaseClient.from('topics').insert(row); if (error) return toast2(error.message,'error'); toast2('Тема сохранена.'); await safeRefresh('teacherMaterials'); return; }
+    if (f.id === 'cloudAddMaterialForm') { e.preventDefault(); const row = { title:($id('cloudMaterialTitle')?.value || '').trim(), topic_id:($id('cloudMaterialTopic')?.value || '') || null, student_id:($id('cloudMaterialStudent')?.value || '') || null, file_url:($id('cloudMaterialUrl')?.value || '').trim(), description:($id('cloudMaterialDescription')?.value || '').trim() }; const { error } = await supabaseClient.from('materials').insert(row); if (error) return toast2(error.message,'error'); toast2('Материал сохранён.'); await safeRefresh('teacherMaterials'); return; }
+    if (f.id === 'cloudAddHomeworkForm') { e.preventDefault(); const row = { student_id:($id('cloudHomeworkStudent')?.value || ''), topic_id:($id('cloudHomeworkTopic')?.value || '') || null, title:($id('cloudHomeworkTitle')?.value || '').trim(), description:($id('cloudHomeworkDescription')?.value || '').trim(), deadline:($id('cloudHomeworkDeadline')?.value || '') || null, is_done:false }; const { error } = await supabaseClient.from('homework').insert(row); if (error) return toast2(error.message,'error'); try { await supabaseClient.from('notification_events').insert({ type:'homework_created', channel:'internal', status:'pending', payload: row }); } catch(_) {} toast2('ДЗ выдано.'); await safeRefresh('teacherHomework'); return; }
+    if (f.id === 'cloudManualSlotForm') { e.preventDefault(); const row = { date:($id('cloudSlotDate')?.value || ''), time:($id('cloudSlotTime')?.value || ''), lesson_type_id:($id('cloudSlotLessonType')?.value || '') || null, duration:Number(($id('cloudSlotDuration')?.value || '') || 60), price:Number(($id('cloudSlotPrice')?.value || '') || 2000), status:'open', currency:'RUB' }; const { error } = await supabaseClient.from('slots').insert(row); if (error) return toast2(error.message,'error'); toast2('Слот добавлен.'); await safeRefresh('teacherSchedule'); if (typeof loadPublicSlots === 'function') loadPublicSlots(); return; }
+    if (f.id === 'cloudAddPaymentForm') { e.preventDefault(); const row = { student_id:($id('cloudPaymentStudent')?.value || '') || null, amount:Number(($id('cloudPaymentAmount')?.value || '') || 0), status:($id('cloudPaymentStatus')?.value || ''), notes:($id('cloudPaymentComment')?.value || '').trim(), currency:'RUB' }; const { error } = await supabaseClient.from('payments').insert(row); if (error) return toast2(error.message,'error'); toast2('Оплата сохранена.'); await safeRefresh('teacherPayments'); return; }
+    if (f.id === 'cloudAddLessonTypeForm') { e.preventDefault(); const row = { title:($id('cloudLessonTypeTitle')?.value || '').trim(), subject:($id('cloudLessonTypeSubject')?.value || '').trim(), duration:Number(($id('cloudLessonTypeDuration')?.value || '') || 60), price:Number(($id('cloudLessonTypePrice')?.value || '') || 2000), currency:'RUB', format:'online', is_active:true }; const { error } = await supabaseClient.from('lesson_types').insert(row); if (error) return toast2(error.message,'error'); toast2('Тип занятия сохранён.'); await safeRefresh('teacherFinance'); return; }
+    if (f.id === 'cloudAddReviewForm') { e.preventDefault(); const row = { author:($id('cloudReviewAuthor')?.value || '').trim(), rating:Number(($id('cloudReviewRating')?.value || '') || 5), text:($id('cloudReviewText')?.value || '').trim(), proof_url:($id('cloudReviewProofUrl')?.value || '').trim(), is_published:true }; const { error } = await supabaseClient.from('reviews').insert(row); if (error) return toast2(error.message,'error'); toast2('Отзыв сохранён.'); await safeRefresh('teacherContent'); return; }
+    if (f.id === 'cloudAddCaseForm') { e.preventDefault(); const row = { title:($id('cloudCaseTitle')?.value || '').trim(), subject:($id('cloudCaseSubject')?.value || '').trim(), before_text:($id('cloudCaseBefore')?.value || '').trim(), process_text:($id('cloudCaseProcess')?.value || '').trim(), result_text:($id('cloudCaseResult')?.value || '').trim(), is_published:true }; const { error } = await supabaseClient.from('student_cases').insert(row); if (error) return toast2(error.message,'error'); toast2('Кейс сохранён.'); await safeRefresh('teacherContent'); return; }
+    if (f.id === 'cloudAddExampleForm') { e.preventDefault(); const row = { title:($id('cloudExampleTitle')?.value || '').trim(), subject:($id('cloudExampleSubject')?.value || '').trim(), type:($id('cloudExampleType')?.value || ''), file_url:($id('cloudExampleUrl')?.value || '').trim(), description:($id('cloudExampleDescription')?.value || '').trim(), is_published:true }; const { error } = await supabaseClient.from('lesson_examples').insert(row); if (error) return toast2(error.message,'error'); toast2('Пример материала сохранён.'); await safeRefresh('teacherContent'); return; }
   }, true);
 
   const oldSetPage = window.setPage;
@@ -8372,22 +8480,17 @@
       const pass = trimVal('v7StudentPassword');
       if (!login || !pass) throw new Error('Укажите имя входа и пароль.');
       const email = trimVal('v7StudentEmail') || `${login}@student.local`;
-      const { data: student, error: studentError } = await window.supabaseClient.from('student_profiles').insert({
-        name: trimVal('v7StudentName'),
-        email,
-        subject: trimVal('v7StudentSubject'),
-        telegram: trimVal('v7StudentTelegram'),
-        yandex_folder_url: trimVal('v7StudentYandex') || null,
-        notes: trimVal('v7StudentNotes')
-      }).select('id').single();
-      if (studentError) throw studentError;
-      const { error: credError } = await window.supabaseClient.from('student_credentials').insert({
-        student_id: student.id,
-        login_name: login,
-        password_hash: await sha256(pass),
-        is_active: true
+      const { error: rpcError } = await window.supabaseClient.rpc('teacher_create_student_access', {
+        p_name: trimVal('v7StudentName'),
+        p_login_name: login,
+        p_password_hash: await sha256(pass),
+        p_email: email,
+        p_subject: trimVal('v7StudentSubject'),
+        p_telegram: trimVal('v7StudentTelegram'),
+        p_yandex_folder_url: trimVal('v7StudentYandex') || null,
+        p_notes: trimVal('v7StudentNotes')
       });
-      if (credError) throw credError;
+      if (rpcError) throw rpcError;
       toast3(`Доступ создан. Логин: ${login} · пароль: ${pass}`, 'success');
       f.reset();
       if (typeof window.safeRefresh === 'function') await window.safeRefresh('teacherStudents');
@@ -8404,7 +8507,7 @@
       const id = reset.dataset.v7ResetPass;
       const pass = prompt('Новый пароль для ученика', randomPassword(10));
       if (!pass) return;
-      const { error } = await window.supabaseClient.from('student_credentials').update({ password_hash: await sha256(pass), is_active:true }).eq('student_id', id);
+      const { error } = await window.supabaseClient.rpc('teacher_reset_student_password', { p_student_id: id, p_password_hash: await sha256(pass) });
       if (error) return toast3(error.message, 'error');
       toast3('Новый пароль: ' + pass, 'success');
       return;
@@ -8457,7 +8560,41 @@
   const val = (id, fallback='') => { const el=$id(id); return el && 'value' in el ? el.value : fallback; };
   const trimVal = (id, fallback='') => String(val(id, fallback) || '').trim();
   const toast8 = (msg, type='success') => typeof window.toast === 'function' ? window.toast(msg, type) : alert(msg);
-  const currentPage = () => localStorage.getItem('platform_current_page') || location.hash.replace(/^#\/?/, '') || 'home';
+  const pathToPage = {
+    '/': 'home',
+    '/home': 'home',
+    '/about': 'about',
+    '/why': 'whyMe',
+    '/parents': 'parents',
+    '/services': 'services',
+    '/booking': 'schedule',
+    '/payment': 'payment',
+    '/contacts': 'contacts',
+    '/login': 'login',
+    '/student': 'studentCabinet',
+    '/teacher': 'teacherCabinet',
+    '/teacher/students': 'teacherStudents',
+    '/teacher/materials': 'teacherMaterials',
+    '/teacher/homework': 'teacherHomework',
+    '/teacher/homework-review': 'teacherHomeworkReview',
+    '/teacher/schedule': 'teacherSchedule',
+    '/teacher/bookings': 'teacherBookings',
+    '/teacher/finance': 'teacherFinance',
+    '/teacher/payments': 'teacherPayments',
+    '/teacher/content': 'teacherContent',
+    '/teacher/analytics': 'analytics',
+    '/teacher/activity': 'activityLog',
+    '/teacher/settings': 'settings',
+    '/library': 'library',
+    '/quizzes': 'quizzes',
+    '/cases': 'cases',
+    '/examples': 'lessonExamples',
+    '/reviews': 'reviews',
+    '/faq': 'faq',
+    '/rules': 'rules'
+  };
+  const pageToPath = Object.fromEntries(Object.entries(pathToPage).map(([k,v]) => [v,k]));
+  const currentPage = () => pathToPage[location.pathname] || localStorage.getItem('platform_current_page') || location.hash.replace(/^#\/?/, '') || 'home';
   const isTeacherPage = (p) => ['teacherCabinet','teacherStudents','teacherMaterials','teacherHomework','teacherHomeworkReview','teacherSchedule','teacherBookings','teacherFinance','teacherPayments','teacherContent'].includes(p);
   const randomPassword = (len=10) => {
     const chars='ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@#$%';
@@ -8483,7 +8620,8 @@
         const prev = currentPage();
         if (prev) sessionStorage.setItem('platform_scroll_' + prev, String(window.scrollY || 0));
         localStorage.setItem('platform_current_page', page);
-        history.replaceState(null, '', '#/' + page);
+        const nextPath = pageToPath[page] || ('/' + page);
+        if (location.pathname !== nextPath) history.pushState({ page }, '', nextPath);
       } catch(_) {}
       const result = oldSetPage(page);
       setTimeout(() => {
@@ -8493,6 +8631,11 @@
       return result;
     };
   }
+  window.addEventListener('popstate', () => {
+    const page = currentPage();
+    if (typeof oldSetPage === 'function') oldSetPage(page);
+  });
+
   let scrollTimer;
   window.addEventListener('scroll', () => {
     clearTimeout(scrollTimer);
@@ -8559,12 +8702,22 @@
   // 3) Логины учеников через RPC. Это исправляет RLS-ошибку при вставке в student_credentials.
   async function listCredentials(ids) {
     if (!ids.length) return [];
-    const rpc = await window.supabaseClient.rpc('list_student_credentials_for_teacher', { p_student_ids: ids }).catch(e => ({ error:e }));
-    if (!rpc.error && Array.isArray(rpc.data)) return rpc.data;
-    console.warn('credentials RPC fallback', rpc.error);
-    const direct = await window.supabaseClient.from('student_credentials').select('student_id, login_name, is_active, updated_at').in('student_id', ids);
-    if (direct.error) { console.warn('credentials direct failed', direct.error); return []; }
-    return direct.data || [];
+    let rpc;
+    try {
+      rpc = await window.supabaseClient.rpc('list_student_credentials_for_teacher', { p_student_ids: ids });
+    } catch (e) {
+      rpc = { error: e };
+    }
+    if (!rpc?.error && Array.isArray(rpc?.data)) return rpc.data;
+    console.warn('credentials RPC fallback', rpc?.error);
+    try {
+      const direct = await window.supabaseClient.from('student_credentials').select('student_id, login_name, is_active, updated_at').in('student_id', ids);
+      if (direct.error) { console.warn('credentials direct failed', direct.error); return []; }
+      return direct.data || [];
+    } catch (e) {
+      console.warn('credentials direct exception', e);
+      return [];
+    }
   }
 
   async function createStudentAccess(row) {
@@ -8599,8 +8752,13 @@
     if (!login || !password) throw new Error('Введите имя и пароль.');
     const passHash = await sha256(password);
     let studentId = null;
-    const rpc = await window.supabaseClient.rpc('student_login_by_password', { p_login_name: login, p_password_hash: passHash }).catch(e => ({ error:e }));
-    if (!rpc.error && rpc.data) studentId = rpc.data;
+    let rpc;
+    try {
+      rpc = await window.supabaseClient.rpc('student_login_by_password', { p_login_name: login, p_password_hash: passHash });
+    } catch (e) {
+      rpc = { error: e };
+    }
+    if (!rpc?.error && rpc?.data) studentId = rpc.data;
     if (!studentId) {
       // Совместимость со старой схемой, если v8 SQL ещё не выполнен.
       const { data, error } = await window.supabaseClient.from('student_credentials').select('student_id, login_name, password_hash, is_active').eq('login_name', login).maybeSingle();
@@ -8742,6 +8900,34 @@
       return;
     }
   }, true);
+})();
+
+
+/* ===== PLATFORM PATCH v9 runtime: sidebar cleanup + safer data refresh ===== */
+(function(){
+  if (window.__platformPatchV9Ready) return;
+  window.__platformPatchV9Ready = true;
+
+  function cleanupSidebar() {
+    document.querySelectorAll('aside.sidebar .menu-group').forEach(group => {
+      const visibleButtons = Array.from(group.querySelectorAll('.menu-group-body .nav-btn')).filter(btn => {
+        const cs = window.getComputedStyle(btn);
+        return cs.display !== 'none' && cs.visibility !== 'hidden';
+      });
+      group.classList.toggle('empty-menu-group', visibleButtons.length === 0);
+      if (visibleButtons.length === 0) group.open = false;
+    });
+  }
+  window.cleanupSidebar = cleanupSidebar;
+  ['DOMContentLoaded','load'].forEach(ev => window.addEventListener(ev, () => setTimeout(cleanupSidebar, 120)));
+  const mo = new MutationObserver(() => setTimeout(cleanupSidebar, 60));
+  if (document.body) mo.observe(document.body, { attributes:true, attributeFilter:['class'], childList:true, subtree:true });
+
+  // Safer Supabase RPC wrapper for browsers where PostgREST builders do not expose .catch().
+  window.safeRpc = async function(fn, args) {
+    try { return await window.supabaseClient.rpc(fn, args || {}); }
+    catch (error) { return { data:null, error }; }
+  };
 })();
 
 </script>

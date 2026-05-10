@@ -1,4 +1,5 @@
 
+
     const SUPABASE_URL = 'https://uwmaflmxwyarctkbzwlr.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV3bWFmbG14d3lhcmN0a2J6d2xyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgyMjAwNDgsImV4cCI6MjA5Mzc5NjA0OH0.TfTvQk1CWavg8BM793OnA1ofA4hoH-RAI1D32BlpudY';
     const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -3588,3 +3589,1890 @@
   };
 })();
 
+
+
+/* ===== PLATFORM PATCH v10: real routes, notifications sync, null guards ===== */
+(function(){
+  if (window.__platformPatchV10Ready) return;
+  window.__platformPatchV10Ready = true;
+
+  const routeByPage = {
+    home:'/', today:'/today', about:'/about', whyMe:'/why-me', parents:'/parents', services:'/services', schedule:'/booking', payment:'/payment', contacts:'/contacts',
+    library:'/library', quizzes:'/quizzes', cases:'/cases', lessonExamples:'/examples', reviews:'/reviews', faq:'/faq', rules:'/rules', login:'/login',
+    studentCabinet:'/student', teacherCabinet:'/teacher', teacherStudents:'/teacher/students', teacherMaterials:'/teacher/materials', teacherHomework:'/teacher/homework',
+    teacherHomeworkReview:'/teacher/homework-review', teacherSchedule:'/teacher/schedule', teacherBookings:'/teacher/bookings', teacherNotifications:'/teacher/notifications',
+    teacherFinance:'/teacher/finance', teacherPayments:'/teacher/payments', teacherContent:'/teacher/content', analytics:'/teacher/analytics', activityLog:'/teacher/activity',
+    settings:'/teacher/settings', integrations:'/teacher/yandex-materials', parentCabinet:'/parent'
+  };
+  const pageByRoute = Object.fromEntries(Object.entries(routeByPage).map(([k,v])=>[v,k]));
+  window.platformRouteByPage = routeByPage;
+
+  function esc(v){return String(v ?? '').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));}
+  function id(x){return document.getElementById(x);}
+  function toast(msg,type='info'){ return typeof window.toast==='function' ? window.toast(msg,type) : console.log(msg); }
+  function currentPage(){ return document.querySelector('.page.active')?.id?.replace('page-','') || localStorage.getItem('last_page') || 'home'; }
+  function humanStatus(status){
+    return ({pending:'ожидает', approved:'одобрено', rejected:'отклонено', open:'свободно', booked:'забронировано', confirmed:'подтверждено', completed:'проведено', cancelled:'отменено', rescheduled:'перенесено'}[status] || status || '—');
+  }
+  function fmtDate(d){ try { return d ? new Date(d).toLocaleDateString('ru-RU',{day:'2-digit',month:'short',weekday:'short'}) : '—'; } catch(_) { return d || '—'; } }
+
+  // 1) Делает клики по меню настоящими переходами по URL. Vercel вернёт index.html, но адрес будет отдельным.
+  function hardNavigateToPage(page){
+    const url = routeByPage[page] || ('/' + page);
+    try {
+      if (location.pathname !== url) history.pushState({ page }, '', url);
+      window.setPage?.(page);
+      window.scrollTo({ top: 0, behavior: 'auto' });
+    } catch(_) {
+      window.setPage?.(page);
+    }
+  }
+  document.addEventListener('click', function(e){
+    const dataPage = e.target.closest('[data-page]');
+    if (dataPage?.dataset?.page) {
+      e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
+      hardNavigateToPage(dataPage.dataset.page);
+      return;
+    }
+    const inline = e.target.closest('[onclick*="setPage("]');
+    if (inline) {
+      const m = String(inline.getAttribute('onclick')||'').match(/setPage\(['"]([^'"]+)['"]\)/);
+      if (m) { e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation(); hardNavigateToPage(m[1]); }
+    }
+  }, true);
+
+  // 2) При открытии прямого URL показываем нужный раздел.
+  function pageFromPath(){
+    const clean = location.pathname.replace(/\/$/,'') || '/';
+    return pageByRoute[clean] || pageByRoute['/' + clean.split('/').filter(Boolean).join('/')] || 'home';
+  }
+  const oldSetPage = window.setPage;
+  if (typeof oldSetPage === 'function') {
+    window.setPage = function(page){
+      oldSetPage(page);
+      localStorage.setItem('last_page', page);
+      updateProfileButton();
+      if (page === 'teacherNotifications') renderTeacherNotificationsPage();
+      if (document.body.classList.contains('is-admin')) updateNotificationBadge();
+    };
+  }
+  window.addEventListener('popstate', () => window.setPage?.(pageFromPath()));
+  setTimeout(()=> window.setPage?.(pageFromPath()), 250);
+
+  // 3) Кнопка ЛК превращается в «Мой профиль» после входа.
+  function updateProfileButton(){
+    const btn = id('topLoginCabinetBtn');
+    if (!btn) return;
+    const logged = document.body.classList.contains('is-admin') || document.body.classList.contains('is-student') || document.body.classList.contains('is-logged');
+    if (!logged) {
+      btn.innerHTML = '<i class="fa-solid fa-user-lock"></i> Войти в ЛК';
+      btn.onclick = () => hardNavigateToPage('login');
+      return;
+    }
+    const target = document.body.classList.contains('is-admin') ? 'teacherCabinet' : 'studentCabinet';
+    btn.innerHTML = '<i class="fa-solid fa-user-check"></i> Мой профиль';
+    btn.onclick = () => hardNavigateToPage(target);
+  }
+  setInterval(updateProfileButton, 1200);
+
+  // 4) Центр уведомлений преподавателя: запросы учеников, заявки, присланные ДЗ, оплаты.
+  function pendingItems(){
+    const st = window.state || {};
+    const requests = (st.requests || []).filter(r => (r.status || 'pending') === 'pending');
+    const bookings = (st.bookingRequests || []).filter(r => (r.status || 'pending') === 'pending');
+    const homework = (st.homework || []).filter(h => (h.is_done || h.answer_text || h.answer_file_url) && (h.grade_percent === null || h.grade_percent === undefined));
+    const payments = (st.payments || []).filter(p => ['pending','ожидает',''].includes(String(p.status || 'pending')));
+    return {requests, bookings, homework, payments, total: requests.length + bookings.length + homework.length + payments.length};
+  }
+  async function ensureTeacherData(){
+    if (!document.body.classList.contains('is-admin')) return;
+    if (typeof window.loadTeacherData === 'function') await window.loadTeacherData();
+    else if (typeof window.loadTeacherCabinet === 'function') await window.loadTeacherCabinet();
+  }
+  async function updateNotificationBadge(){
+    try { await ensureTeacherData(); } catch(_) {}
+    const badge = id('teacherNotifyBadge'); if (!badge) return;
+    const count = pendingItems().total;
+    badge.textContent = String(count);
+    badge.style.display = count ? 'inline-flex' : 'none';
+  }
+  window.updateNotificationBadge = updateNotificationBadge;
+
+  window.renderTeacherNotificationsPage = async function(){
+    if (!document.body.classList.contains('is-admin')) { window.setPage?.('login'); return; }
+    await ensureTeacherData();
+    const {requests, bookings, homework, payments, total} = pendingItems();
+    const stats = id('teacherNotificationsStats');
+    if (stats) stats.innerHTML = `
+      <div class="stat"><strong>${total}</strong><span>новых уведомлений</span></div>
+      <div class="stat"><strong>${requests.length}</strong><span>запросов учеников</span></div>
+      <div class="stat"><strong>${homework.length}</strong><span>ДЗ на проверке</span></div>
+      <div class="stat"><strong>${bookings.length}</strong><span>заявок на урок</span></div>`;
+    const inbox = id('teacherNotificationsInbox');
+    if (inbox) inbox.innerHTML = [
+      ...requests.map(r=>`<article class="learning-item"><div class="top"><strong>Запрос: ${esc(r.type)}</strong><span class="status pending">${humanStatus(r.status)}</span></div><p class="muted">${esc(r.student_profiles?.name || '')} · ${fmtDate(r.created_at)}</p><p>${esc(r.message || '')}</p><div class="row-actions"><button class="btn small green" onclick="approveStudentRequest('${r.id}')">Одобрить</button><button class="btn small red" onclick="setRequestStatus('${r.id}','rejected')">Отклонить</button></div></article>`),
+      ...bookings.map(b=>`<article class="learning-item"><div class="top"><strong>Заявка на занятие: ${esc(b.name || b.student_profiles?.name)}</strong><span class="status pending">${humanStatus(b.status)}</span></div><p>Контакт: ${esc(b.contact || b.email || '')}</p><p class="muted">${esc(b.direction || '')} · ${esc(b.format || '')}</p><div class="row-actions"><button class="btn small green" onclick="approveBookingRequest('${b.id}')">Подтвердить</button><button class="btn small red" onclick="rejectBookingRequest('${b.id}')">Отклонить</button></div></article>`),
+      ...homework.map(h=>`<article class="learning-item"><div class="top"><strong>ДЗ на проверку: ${esc(h.title)}</strong><span class="status pending">на проверке</span></div><p class="muted">${esc(h.student_profiles?.name || '')} · ${esc(h.topics?.title || '')}</p>${h.answer_text?`<p>${esc(h.answer_text)}</p>`:''}<button class="btn small" onclick="gradeHomework('${h.id}')">Проверить</button></article>`),
+      ...payments.map(p=>`<article class="learning-item"><div class="top"><strong>Оплата: ${esc(p.student_profiles?.name || 'ученик')}</strong><span class="status pending">${esc(p.status || 'pending')}</span></div><p>${Number(p.amount || 0).toLocaleString('ru-RU')} ₽ · ${esc(p.notes || '')}</p></article>`)
+    ].join('') || '<div class="empty">Новых уведомлений нет</div>';
+    const actions = id('teacherNotificationsActions');
+    if (actions) actions.innerHTML = `
+      <button class="btn" data-page="teacherSchedule">Открыть расписание</button>
+      <button class="btn secondary" data-page="teacherHomeworkReview">Проверить ДЗ</button>
+      <button class="btn secondary" data-page="teacherBookings">Заявки на занятия</button>
+      <button class="btn soft" onclick="updateNotificationBadge(); renderTeacherNotificationsPage();">Обновить</button>`;
+    updateNotificationBadge();
+  };
+
+  // 5) После одобрения/отклонения запросов сразу обновляем ЛК преподавателя и ученика.
+  const oldApprove = window.approveStudentRequest;
+  if (typeof oldApprove === 'function') {
+    window.approveStudentRequest = async function(id){
+      await oldApprove(id);
+      await updateNotificationBadge();
+      if (currentPage()==='teacherNotifications') await renderTeacherNotificationsPage();
+    };
+  }
+  const oldSetRequest = window.setRequestStatus;
+  if (typeof oldSetRequest === 'function') {
+    window.setRequestStatus = async function(id,status){
+      await oldSetRequest(id,status);
+      await updateNotificationBadge();
+      if (currentPage()==='teacherNotifications') await renderTeacherNotificationsPage();
+    };
+  }
+
+  // 6) Realtime: переносы, сообщения, ДЗ и оплаты обновляются без ручной перезагрузки.
+  setTimeout(function(){
+    if (!window.supabaseClient || window.__platformRealtimeV10) return;
+    window.__platformRealtimeV10 = true;
+    try {
+      window.supabaseClient.channel('platform-live-v10')
+        .on('postgres_changes',{event:'*',schema:'public',table:'lesson_requests'}, async()=>{ if (document.body.classList.contains('is-admin')) await updateNotificationBadge(); if (currentPage()==='teacherNotifications') await renderTeacherNotificationsPage(); if (currentPage()==='studentCabinet' && typeof window.loadStudentCabinet==='function') await window.loadStudentCabinet(); })
+        .on('postgres_changes',{event:'*',schema:'public',table:'booking_requests'}, async()=>{ if (document.body.classList.contains('is-admin')) await updateNotificationBadge(); })
+        .on('postgres_changes',{event:'*',schema:'public',table:'homework'}, async()=>{ if (document.body.classList.contains('is-admin')) await updateNotificationBadge(); if (currentPage()==='studentCabinet' && typeof window.loadStudentCabinet==='function') await window.loadStudentCabinet(); })
+        .on('postgres_changes',{event:'*',schema:'public',table:'slots'}, async()=>{ if (currentPage()==='studentCabinet' && typeof window.loadStudentCabinet==='function') await window.loadStudentCabinet(); })
+        .on('postgres_changes',{event:'*',schema:'public',table:'payments'}, async()=>{ if (document.body.classList.contains('is-admin')) await updateNotificationBadge(); if (currentPage()==='studentCabinet' && typeof window.loadStudentCabinet==='function') await window.loadStudentCabinet(); })
+        .subscribe();
+    } catch(e){ console.warn('Realtime v10 skipped', e); }
+  }, 1800);
+
+  // 7) Студенческий вход только через RPC: не читаем таблицу паролей напрямую, чтобы не ловить RLS.
+  if (window.supabaseClient && typeof window.studentLoginByName === 'function') {
+    const sha256 = async (text) => { const data = new TextEncoder().encode(String(text||'')); const hash = await crypto.subtle.digest('SHA-256', data); return Array.from(new Uint8Array(hash)).map(b=>b.toString(16).padStart(2,'0')).join(''); };
+    const normalizeLogin = (login) => String(login || '').trim().toLowerCase().replace(/\s+/g,'_').replace(/[^a-z0-9._-]/g,'');
+    window.studentLoginByName = async function(login,password){
+      const p_login_name = normalizeLogin(login);
+      const p_password_hash = await sha256(password);
+      const {data,error} = await window.supabaseClient.rpc('student_login_by_password',{p_login_name,p_password_hash});
+      if (error || !data) throw (error || new Error('Неверное имя или пароль.'));
+      localStorage.setItem('student_session_id', data);
+      if (typeof window.restoreStudentSession === 'function') await window.restoreStudentSession();
+      toast('Вход выполнен','success');
+      window.setPage?.('studentCabinet');
+    };
+  }
+
+  updateProfileButton();
+  setTimeout(updateNotificationBadge, 2000);
+})();
+
+
+/* ===== PLATFORM PATCH v11: cleanup legacy duplicates + stable student auth ===== */
+(function(){
+  if (window.__platformPatchV11Ready) return;
+  window.__platformPatchV11Ready = true;
+
+  const $ = (id) => document.getElementById(id) || window.__safeNullElement;
+  const toast = (msg, type='info') => typeof window.toast === 'function' ? window.toast(msg, type) : alert(msg);
+  const trim = (id) => String($(id)?.value || '').trim();
+
+  function setStudentAuthMode(){
+    if ($('authMode')) $('authMode').value = 'student_login';
+    if ($('authLoginLabel')) $('authLoginLabel').textContent = 'Имя ученика';
+    if ($('authEmail')) { $('authEmail').type = 'text'; $('authEmail').placeholder = 'например: ivan_8class'; }
+    if ($('authSubmitBtn')) $('authSubmitBtn').textContent = 'Войти в ЛК ученика';
+    $('loginTabBtn')?.classList.add('active');
+    $('signupTabBtn')?.classList.remove('active');
+    if ($('authMessage')) $('authMessage').textContent = 'Введите имя и пароль, которые выдал преподаватель.';
+  }
+  function setTeacherAuthMode(){
+    if ($('authMode')) $('authMode').value = 'teacher_login';
+    if ($('authLoginLabel')) $('authLoginLabel').textContent = 'Email преподавателя';
+    if ($('authEmail')) { $('authEmail').type = 'email'; $('authEmail').placeholder = 'email преподавателя'; }
+    if ($('authSubmitBtn')) $('authSubmitBtn').textContent = 'Войти как преподаватель';
+    $('signupTabBtn')?.classList.add('active');
+    $('loginTabBtn')?.classList.remove('active');
+    if ($('authMessage')) $('authMessage').textContent = 'Вход преподавателя выполняется по email и паролю Supabase.';
+  }
+
+  async function loadStudentById(studentId){
+    if (!studentId || !window.supabaseClient) return false;
+    const { data, error } = await window.supabaseClient.from('student_profiles').select('*').eq('id', studentId).maybeSingle();
+    if (error || !data) return false;
+    window.state = window.state || {};
+    window.state.studentProfile = data;
+    window.state.user = { id: 'student-local-' + data.id, email: data.email || '', student_local: true };
+    document.body.classList.add('is-logged','is-student');
+    document.body.classList.remove('is-admin','is-parent');
+    if (typeof window.loadStudentData === 'function') await window.loadStudentData();
+    return true;
+  }
+  window.restoreStudentSession = async function(){
+    const studentId = localStorage.getItem('student_session_id');
+    if (!studentId || document.body.classList.contains('is-admin')) return false;
+    return await loadStudentById(studentId);
+  };
+
+  document.addEventListener('click', function(e){
+    if (e.target.closest('#loginTabBtn')) { e.preventDefault(); e.stopImmediatePropagation(); setStudentAuthMode(); }
+    if (e.target.closest('#signupTabBtn')) { e.preventDefault(); e.stopImmediatePropagation(); setTeacherAuthMode(); }
+    if (e.target.closest('#logoutBtn')) localStorage.removeItem('student_session_id');
+  }, true);
+
+  document.addEventListener('submit', async function(e){
+    const form = e.target;
+    if (!form || form.id !== 'authForm') return;
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    try {
+      const mode = $('authMode')?.value || 'student_login';
+      if (mode === 'teacher_login') {
+        const { error } = await window.supabaseClient.auth.signInWithPassword({ email: trim('authEmail'), password: trim('authPassword') });
+        if (error) throw error;
+        localStorage.removeItem('student_session_id');
+        if (typeof window.initAuth === 'function') await window.initAuth();
+        window.setPage?.('teacherCabinet');
+        return;
+      }
+      if (typeof window.studentLoginByName !== 'function') throw new Error('Функция входа ученика ещё не загрузилась. Обновите страницу.');
+      await window.studentLoginByName(trim('authEmail'), trim('authPassword'));
+    } catch(err) {
+      toast('Ошибка входа: ' + (err.message || err), 'error');
+    }
+  }, true);
+
+  // На странице обзора не должно быть старых форм: они удалены из HTML, а этот слой страхует старый кэш браузера.
+  const legacySelectors = ['#addStudentForm', '#addTopicForm', '#addMaterialForm', '#addHomeworkForm', '#createSlotForm', '#addPaymentForm', '#addStudentPackageForm'];
+  function removeLegacyTeacherCabinetForms(){
+    const teacher = $('page-teacherCabinet');
+    if (!teacher) return;
+    legacySelectors.forEach(sel => teacher.querySelector(sel)?.closest('.panel')?.remove());
+  }
+  document.addEventListener('DOMContentLoaded', () => { setStudentAuthMode(); removeLegacyTeacherCabinetForms(); });
+  setTimeout(() => { setStudentAuthMode(); removeLegacyTeacherCabinetForms(); window.restoreStudentSession?.(); }, 400);
+})();
+
+
+/* ===== PLATFORM PATCH v13: заявка -> потенциально занят, расширенные заявки, безопасные формы ===== */
+(function(){
+  if (window.__platformPatchV13Ready) return;
+  window.__platformPatchV13Ready = true;
+
+  const $ = (id) => document.getElementById(id) || window.__safeNullElement;
+  const val = (id, fallback='') => { const el = $(id); return el && 'value' in el ? String(el.value ?? '').trim() : fallback; };
+  const setVal = (id, value='') => { const el = $(id); if (el && 'value' in el) el.value = value ?? ''; };
+  const esc = (v) => String(v ?? '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
+  const toast = (m,t='info') => typeof window.toast === 'function' ? window.toast(m,t) : console.log(m);
+  const supa = () => window.supabaseClient;
+  const st = () => window.state || {};
+  const fmtDate = (d) => { try { return d ? new Date(String(d).includes('T') ? d : d + 'T00:00:00').toLocaleDateString('ru-RU',{day:'2-digit',month:'short',weekday:'short'}) : '—'; } catch { return d || '—'; } };
+  const human = (status) => ({ pending:'Ожидает подтверждения', approved:'Одобрено', rejected:'Отклонено', open:'Свободно', booked:'Забронировано', confirmed:'Подтверждено', completed:'Проведено', cancelled:'Отменено', rescheduled:'Перенесено' }[status] || status || '—');
+
+  // Не показываем бесконечные красные тосты от старых обработчиков, если старого поля уже нет.
+  window.addEventListener('error', (event) => {
+    const msg = String(event.message || '');
+    if (msg.includes("Cannot read properties of null") && msg.includes("value")) {
+      event.preventDefault();
+      console.warn('Legacy null-value handler skipped:', msg);
+    }
+  }, true);
+  window.addEventListener('unhandledrejection', (event) => {
+    const msg = String(event.reason?.message || event.reason || '');
+    if (msg.includes("Cannot read properties of null") && msg.includes("value")) {
+      event.preventDefault();
+      console.warn('Legacy null-value promise skipped:', msg);
+    }
+  }, true);
+
+  async function refreshTeacher(page) {
+    try {
+      if (typeof window.loadTeacherData === 'function') await window.loadTeacherData();
+      if (page && typeof window.renderTeacherPage === 'function') await window.renderTeacherPage(page);
+      if (typeof window.updateNotificationBadge === 'function') await window.updateNotificationBadge();
+    } catch (e) { console.warn('refreshTeacher skipped', e); }
+  }
+
+  // Публичное расписание: показываем open как свободные, pending как «потенциально занято», confirmed/booked не показываем.
+  window.loadPublicSlots = async function(){
+    const box = $('publicSlots');
+    const calendar = $('calendarGrid');
+    if (!box || !calendar || !supa()) return;
+
+    box.innerHTML = '<div class="empty">Загружаю расписание...</div>';
+    const { data, error } = await supa()
+      .from('slots')
+      .select('*, lesson_types(title, subject, price, duration)')
+      .in('status', ['open','pending'])
+      .order('date')
+      .order('time');
+
+    if (error) {
+      box.innerHTML = `<div class="empty">Не удалось загрузить расписание: ${esc(error.message)}</div>`;
+      return;
+    }
+
+    const selectedSubject = (window.wizardState?.subject) || localStorage.getItem('selected_subject') || 'Математика';
+    const slots = (data || []).filter(slot => !selectedSubject || slot.lesson_types?.subject === selectedSubject || slot.lesson_types?.title?.includes(selectedSubject));
+    const publicSlots = slots.filter(s => s.status === 'open');
+    try { if (typeof window.renderCalendar === 'function') window.renderCalendar('calendarGrid', publicSlots, { publicMode:true }); } catch(e) { console.warn(e); }
+
+    if (!slots.length) {
+      box.innerHTML = '<div class="empty">Для выбранного предмета пока нет открытых слотов. Можно отправить заявку «согласую с преподавателем».</div>';
+      return;
+    }
+
+    box.innerHTML = slots.map(slot => {
+      const isPending = slot.status === 'pending';
+      const price = Number(slot.price || slot.lesson_types?.price || 0).toLocaleString('ru-RU');
+      return `<article class="slot-card ${isPending ? 'pending' : 'open'}">
+        <strong>${fmtDate(slot.date)} · ${esc(slot.time)}</strong>
+        <span class="status ${isPending ? 'pending' : 'open'}">${isPending ? 'Потенциально занят — ждёт подтверждения' : `Свободно · ${esc(slot.duration || slot.lesson_types?.duration || 60)} мин · ${price} ₽`}</span>
+        <p class="muted">${esc(slot.lesson_types?.title || 'Индивидуальное занятие')}</p>
+        ${isPending ? '<button class="btn small soft" disabled>На рассмотрении</button>' : `<button class="btn small" onclick="bookPublicSlot('${slot.id}')">Занять слот</button>`}
+      </article>`;
+    }).join('');
+  };
+
+  // Безопасные открытия модального окна заявки: не требуют авторизации и не падают без старых полей.
+  window.bookPublicSlot = async function(slotId){
+    setVal('bookingSlotId', slotId || '');
+    setVal('bookingName', st().studentProfile?.name || '');
+    setVal('bookingContact', st().user?.email || '');
+    if (typeof window.fillBookingOptions === 'function') await window.fillBookingOptions();
+    const subject = localStorage.getItem('selected_subject') || window.wizardState?.subject || 'Математика';
+    setVal('bookingDirection', subject);
+    const notice = $('bookingNoSlotNotice'); if (notice) notice.style.display = 'none';
+    $('bookingModal')?.classList.add('active');
+  };
+
+  window.bookWithoutSlot = async function(){
+    setVal('bookingSlotId', '');
+    setVal('bookingName', st().studentProfile?.name || '');
+    setVal('bookingContact', st().user?.email || '');
+    if (typeof window.fillBookingOptions === 'function') await window.fillBookingOptions();
+    setVal('bookingDirection', localStorage.getItem('selected_subject') || window.wizardState?.subject || 'Математика');
+    const notice = $('bookingNoSlotNotice'); if (notice) notice.style.display = 'block';
+    $('bookingModal')?.classList.add('active');
+  };
+
+  // Заменяем старый submit у заявки на безопасный: после заявки слот становится pending.
+  function bindSafeBookingForm(){
+    const form = $('bookingForm');
+    if (!form || form.dataset.v13Bound === 'true') return;
+    const clean = form.cloneNode(true);
+    clean.dataset.v13Bound = 'true';
+    form.replaceWith(clean);
+    clean.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!supa()) return toast('Supabase не подключён', 'error');
+      const slotId = val('bookingSlotId');
+      const name = val('bookingName');
+      const contact = val('bookingContact');
+      if (!name || !contact) return toast('Заполните имя и контакт', 'error');
+      const direction = val('bookingDirection', localStorage.getItem('selected_subject') || window.wizardState?.subject || 'Математика');
+      const format = val('bookingFormat', window.wizardState?.format || 'online');
+      const message = [val('bookingMessage'), window.wizardState?.goal ? `Цель: ${window.wizardState.goal}` : ''].filter(Boolean).join('\n');
+
+      if (slotId) {
+        const { data: slot } = await supa().from('slots').select('status').eq('id', slotId).maybeSingle();
+        if (slot && slot.status !== 'open') {
+          toast('Этот слот уже на рассмотрении или занят. Выберите другое время.', 'error');
+          await window.loadPublicSlots?.();
+          return;
+        }
+      }
+
+      const { data: created, error } = await supa().from('booking_requests').insert({
+        slot_id: slotId || null,
+        student_profile_id: st().studentProfile?.id || null,
+        name, contact,
+        email: st().user?.email || null,
+        format, direction, message,
+        status: 'pending'
+      }).select('*').single();
+      if (error) return toast('Не удалось отправить заявку: ' + error.message, 'error');
+
+      if (slotId) {
+        const { error: slotError } = await supa().from('slots').update({
+          status: 'pending',
+          student_name: name,
+          student_contact: contact,
+          student_profile_id: st().studentProfile?.id || null
+        }).eq('id', slotId).eq('status','open');
+        if (slotError) console.warn('slot pending update failed', slotError.message);
+      }
+
+      await supa().from('notification_events').insert({
+        type: 'booking_request_created', channel:'site', status:'pending',
+        payload: { request_id: created?.id, name, contact, slotId, format, direction, message }
+      });
+
+      $('bookingModal')?.classList.remove('active');
+      clean.reset();
+      toast(slotId ? 'Заявка отправлена. Слот временно отмечен как потенциально занятый.' : 'Заявка отправлена. Преподаватель предложит время.', 'success');
+      await window.loadPublicSlots?.();
+      if (document.body.classList.contains('is-admin')) await refreshTeacher('teacherBookings');
+    });
+  }
+  bindSafeBookingForm();
+  setTimeout(bindSafeBookingForm, 700);
+
+  // Одобрение: подтверждённый слот исчезает из публичной записи. Отклонение: pending-слот снова открывается.
+  window.approveBookingRequest = async function(id){
+    if (!supa()) return;
+    const req = (st().bookingRequests || []).find(x => String(x.id) === String(id)) || (await supa().from('booking_requests').select('*').eq('id',id).maybeSingle()).data;
+    if (!req) return toast('Заявка не найдена', 'error');
+
+    if (req.slot_id) {
+      const { error: slotError } = await supa().from('slots').update({
+        status:'confirmed',
+        student_name: req.name || null,
+        student_contact: req.contact || null,
+        student_profile_id: req.student_profile_id || null
+      }).eq('id', req.slot_id);
+      if (slotError) return toast('Не удалось подтвердить слот: ' + slotError.message, 'error');
+    }
+    const { error } = await supa().from('booking_requests').update({ status:'approved' }).eq('id', id);
+    if (error) return toast(error.message, 'error');
+    await supa().from('notification_events').insert({ type:'booking_approved', channel:'site', status:'pending', payload:{ request_id:id, slot_id:req.slot_id, name:req.name, contact:req.contact } });
+    toast('Заявка подтверждена. Слот убран из публичного расписания.', 'success');
+    await refreshTeacher('teacherBookings');
+    await window.loadPublicSlots?.();
+  };
+
+  window.rejectBookingRequest = async function(id){
+    if (!supa()) return;
+    const req = (st().bookingRequests || []).find(x => String(x.id) === String(id)) || (await supa().from('booking_requests').select('*').eq('id',id).maybeSingle()).data;
+    const { error } = await supa().from('booking_requests').update({ status:'rejected' }).eq('id', id);
+    if (error) return toast(error.message, 'error');
+    if (req?.slot_id) {
+      await supa().from('slots').update({ status:'open', student_name:null, student_contact:null, student_profile_id:null }).eq('id', req.slot_id).eq('status','pending');
+    }
+    toast('Заявка отклонена. Слот снова доступен.', 'success');
+    await refreshTeacher('teacherBookings');
+    await window.loadPublicSlots?.();
+  };
+
+  // Карточки заявок в ЛК преподавателя: больше информации + удобные действия.
+  window.renderTeacherBookingsFunctional = async function(){
+    if (typeof window.ensureTeacherData === 'function') await window.ensureTeacherData();
+    else if (typeof window.loadTeacherData === 'function') await window.loadTeacherData();
+    const mount = typeof window.teacherMount === 'function' ? window.teacherMount('teacherBookings') : $('teacherBookingsMount');
+    if (!mount) return;
+    const requests = (st().bookingRequests || []).slice().sort((a,b)=>String(b.created_at||'').localeCompare(String(a.created_at||'')));
+    const pending = requests.filter(r => (r.status || 'pending') === 'pending').length;
+    const approved = requests.filter(r => r.status === 'approved').length;
+    const rejected = requests.filter(r => r.status === 'rejected').length;
+    mount.innerHTML = `<div class="stat-grid" style="margin-bottom:18px">
+      <div class="stat"><strong>${requests.length}</strong><span>всего заявок</span></div>
+      <div class="stat"><strong>${pending}</strong><span>ожидают решения</span></div>
+      <div class="stat"><strong>${approved}</strong><span>подтверждены</span></div>
+      <div class="stat"><strong>${rejected}</strong><span>отклонены</span></div>
+    </div>
+    <div class="panel"><div class="top-actions"><h3>Заявки на занятия</h3><button class="btn small soft" id="v13RefreshBookings">Обновить</button></div>
+      <div class="item-list">${requests.map(r => {
+        const slot = r.slots || (st().slots || []).find(s => String(s.id) === String(r.slot_id));
+        const msg = r.message || '';
+        return `<article class="learning-item request-card request-${esc(r.status || 'pending')}">
+          <div class="top"><strong>${esc(r.name || r.student_profiles?.name || 'Новая заявка')}</strong><span class="status ${esc(r.status || 'pending')}">${human(r.status || 'pending')}</span></div>
+          <div class="request-meta">
+            <span><b>Контакт:</b> ${esc(r.contact || r.email || '—')}</span>
+            <span><b>Направление:</b> ${esc(r.direction || '—')}</span>
+            <span><b>Формат:</b> ${esc(r.format || '—')}</span>
+            <span><b>Создана:</b> ${fmtDate(r.created_at)}</span>
+            <span><b>Слот:</b> ${slot ? `${fmtDate(slot.date)} · ${esc(slot.time)} · ${esc(slot.lesson_types?.title || '')}` : (r.slot_id ? 'слот не найден' : 'без слота')}</span>
+          </div>
+          ${msg ? `<p class="request-message">${esc(msg).replace(/\n/g,'<br>')}</p>` : '<p class="muted">Комментарий не указан.</p>'}
+          <div class="row-actions">
+            ${(r.status || 'pending') === 'pending' ? `<button class="btn small green" data-cloud-approve-booking="${r.id}">Подтвердить</button><button class="btn small red" data-cloud-reject-booking="${r.id}">Отклонить</button>` : ''}
+            ${r.contact ? `<a class="btn small soft" href="${String(r.contact).includes('@') ? 'mailto:' + esc(r.contact) : '#'}" ${String(r.contact).includes('@') ? '' : `onclick="navigator.clipboard?.writeText('${esc(r.contact)}'); toast('Контакт скопирован','success'); return false;"`}>Связаться</a>` : ''}
+            <button class="btn small soft" onclick="navigator.clipboard?.writeText('${esc([r.name,r.contact,r.direction,r.format,msg].filter(Boolean).join(' | '))}'); toast('Заявка скопирована','success')">Скопировать</button>
+          </div>
+        </article>`;
+      }).join('') || '<div class="empty">Заявок пока нет</div>'}</div></div>`;
+    $('v13RefreshBookings')?.addEventListener('click', () => refreshTeacher('teacherBookings'));
+  };
+
+  // Ученические запросы безопасно отправляются и сразу видны преподавателю в уведомлениях.
+  function bindSafeStudentRequestForm(){
+    const form = $('studentRequestForm');
+    if (!form || form.dataset.v13Bound === 'true') return;
+    const clean = form.cloneNode(true);
+    clean.dataset.v13Bound = 'true';
+    form.replaceWith(clean);
+    clean.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const student = st().studentProfile;
+      if (!student) return toast('Войдите в ЛК ученика, чтобы отправить запрос.', 'info');
+      const payload = {
+        student_id: student.id,
+        type: val('studentRequestType','question'),
+        slot_id: val('studentRequestSlot') || null,
+        requested_date: val('studentRequestNewDate') || null,
+        requested_time: val('studentRequestNewTime') || null,
+        message: val('studentRequestMessage'),
+        status:'pending'
+      };
+      if (!payload.message) return toast('Напишите комментарий к запросу', 'error');
+      const { error } = await supa().from('lesson_requests').insert(payload);
+      if (error) return toast(error.message, 'error');
+      await supa().from('notification_events').insert({ type:'student_request_created', channel:'site', status:'pending', payload:{ student:student.name, ...payload } });
+      toast('Запрос отправлен преподавателю.', 'success');
+      clean.reset();
+      if (typeof window.loadStudentCabinet === 'function') await window.loadStudentCabinet();
+      if (document.body.classList.contains('is-admin')) await refreshTeacher('teacherNotifications');
+    });
+  }
+  bindSafeStudentRequestForm();
+  setTimeout(bindSafeStudentRequestForm, 900);
+
+  // При клике по закрытым разделам не «выкидываем» молча на авторизацию.
+  const protectedPages = new Set(['teacherCabinet','teacherStudents','teacherMaterials','teacherHomework','teacherHomeworkReview','teacherSchedule','teacherBookings','teacherNotifications','teacherFinance','teacherPayments','teacherContent','analytics','activityLog','settings']);
+  const prevSetPage = window.setPage;
+  if (typeof prevSetPage === 'function' && !window.__v13SetPageWrapped) {
+    window.__v13SetPageWrapped = true;
+    window.setPage = function(page){
+      if (protectedPages.has(page) && !document.body.classList.contains('is-admin')) {
+        toast('Этот раздел доступен только преподавателю. Вы остались на текущей странице.', 'info');
+        return;
+      }
+      if (page === 'studentCabinet' && !document.body.classList.contains('is-student') && !document.body.classList.contains('is-admin')) {
+        toast('Войдите в ЛК ученика, чтобы открыть профиль.', 'info');
+        return prevSetPage('login');
+      }
+      return prevSetPage(page);
+    };
+  }
+
+  // Realtime: публичное расписание и заявки обновляются без перезагрузки.
+  setTimeout(() => {
+    if (!supa() || window.__v13RealtimeReady) return;
+    window.__v13RealtimeReady = true;
+    try {
+      supa().channel('platform-v13-bookings')
+        .on('postgres_changes',{event:'*',schema:'public',table:'slots'}, async()=>{ if ($('publicSlots')) await window.loadPublicSlots?.(); if (typeof window.loadStudentCabinet === 'function' && document.body.classList.contains('is-student')) await window.loadStudentCabinet(); })
+        .on('postgres_changes',{event:'*',schema:'public',table:'booking_requests'}, async()=>{ if (document.body.classList.contains('is-admin')) { await refreshTeacher('teacherBookings'); if (typeof window.updateNotificationBadge === 'function') await window.updateNotificationBadge(); } })
+        .on('postgres_changes',{event:'*',schema:'public',table:'lesson_requests'}, async()=>{ if (document.body.classList.contains('is-admin') && typeof window.updateNotificationBadge === 'function') await window.updateNotificationBadge(); if (document.body.classList.contains('is-student') && typeof window.loadStudentCabinet === 'function') await window.loadStudentCabinet(); })
+        .subscribe();
+    } catch(e) { console.warn('v13 realtime skipped', e); }
+  }, 1600);
+
+  // Немного стилей для новых карточек, если CSS ещё не обновлён.
+  const style = document.createElement('style');
+  style.textContent = `.slot-card.pending{border-color:#fbbf24;background:#fffbeb}.status.pending{background:#fef3c7;color:#92400e}.request-card{border-left:5px solid #dbeafe}.request-card.request-pending{border-left-color:#f59e0b}.request-card.request-approved{border-left-color:#22c55e}.request-card.request-rejected{border-left-color:#ef4444}.request-meta{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:8px 14px;margin:10px 0;color:#475569}.request-message{background:#f8fafc;border:1px solid #e2e8f0;border-radius:16px;padding:12px}`;
+  document.head.appendChild(style);
+})();
+
+
+/* ===== PLATFORM PATCH v14: instant route switch + homepage sync ===== */
+(function(){
+  if (window.__platformPatchV14Ready) return;
+  window.__platformPatchV14Ready = true;
+
+  const routeByPage = window.platformRouteByPage || {
+    home:'/', today:'/today', about:'/about', whyMe:'/why-me', parents:'/parents', services:'/services', schedule:'/booking', payment:'/payment', contacts:'/contacts',
+    library:'/library', quizzes:'/quizzes', cases:'/cases', lessonExamples:'/examples', reviews:'/reviews', faq:'/faq', rules:'/rules', login:'/login',
+    studentCabinet:'/student', teacherCabinet:'/teacher', teacherStudents:'/teacher/students', teacherMaterials:'/teacher/materials', teacherHomework:'/teacher/homework',
+    teacherHomeworkReview:'/teacher/homework-review', teacherSchedule:'/teacher/schedule', teacherBookings:'/teacher/bookings', teacherNotifications:'/teacher/notifications',
+    teacherFinance:'/teacher/finance', teacherPayments:'/teacher/payments', teacherContent:'/teacher/content', analytics:'/teacher/analytics', activityLog:'/teacher/activity',
+    settings:'/teacher/settings', integrations:'/teacher/yandex-materials', parentCabinet:'/parent'
+  };
+  const pageByRoute = Object.fromEntries(Object.entries(routeByPage).map(([p,u]) => [u,p]));
+  function esc(v){ return String(v ?? '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m])); }
+  function supa(){ return window.supabaseClient; }
+  function currentPage(){ return document.querySelector('.page.active')?.id?.replace('page-','') || pageByRoute[location.pathname.replace(/\/$/,'') || '/'] || 'home'; }
+  function pageFromPath(){ const clean = location.pathname.replace(/\/$/,'') || '/'; return pageByRoute[clean] || 'home'; }
+
+  // Главный фикс: никакого location.assign при клике по боковому меню.
+  // URL меняется через History API, а нужный раздел показывается сразу в текущем документе.
+  window.platformNavigate = function(page, opts={}){
+    const url = routeByPage[page] || ('/' + page);
+    try {
+      if (!opts.replace && location.pathname !== url) history.pushState({page}, '', url);
+      if (opts.replace && location.pathname !== url) history.replaceState({page}, '', url);
+      localStorage.setItem('last_page', page);
+    } catch(_) {}
+    const rawSetPage = window.__v14RawSetPage || window.setPage;
+    if (typeof rawSetPage === 'function') rawSetPage(page);
+    if (!opts.keepScroll) setTimeout(() => window.scrollTo({top:0, behavior:'auto'}), 0);
+  };
+
+  if (!window.__v14RawSetPage && typeof window.setPage === 'function') {
+    window.__v14RawSetPage = window.setPage;
+    window.setPage = function(page){
+      const url = routeByPage[page] || ('/' + page);
+      try { if (location.pathname !== url) history.pushState({page}, '', url); } catch(_) {}
+      const result = window.__v14RawSetPage(page);
+      if (page === 'home') setTimeout(refreshHomepageLiveContent, 80);
+      return result;
+    };
+  }
+
+  document.addEventListener('click', function(e){
+    const btn = e.target.closest('[data-page]');
+    if (btn?.dataset?.page) {
+      e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
+      window.platformNavigate(btn.dataset.page);
+      return;
+    }
+    const inline = e.target.closest('[onclick*="setPage("]');
+    if (inline) {
+      const m = String(inline.getAttribute('onclick') || '').match(/setPage\(['\"]([^'\"]+)['\"]\)/);
+      if (m) { e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation(); window.platformNavigate(m[1]); }
+    }
+  }, true);
+
+  window.addEventListener('popstate', () => window.platformNavigate(pageFromPath(), {replace:true, keepScroll:true}));
+
+  async function loadTable(table, queryFn){
+    if (!supa()) return [];
+    try {
+      const q = queryFn ? queryFn(supa().from(table)) : supa().from(table).select('*');
+      const {data, error} = await q;
+      if (error) return [];
+      return data || [];
+    } catch(_) { return []; }
+  }
+
+  async function refreshHomepageLiveContent(){
+    const box = document.getElementById('homeLiveCards');
+    if (!box) return;
+    const [reviews, cases, examples, lessonTypes] = await Promise.all([
+      loadTable('reviews', q => q.select('*').eq('is_published', true).order('created_at', {ascending:false}).limit(2)),
+      loadTable('student_cases', q => q.select('*').eq('is_published', true).order('created_at', {ascending:false}).limit(2)),
+      loadTable('lesson_examples', q => q.select('*').eq('is_published', true).order('created_at', {ascending:false}).limit(2)),
+      loadTable('lesson_types', q => q.select('*').eq('is_active', true).order('price', {ascending:true}).limit(3))
+    ]);
+
+    const cards = [];
+    if (cases[0]) cards.push(`<article class="panel link-card" data-page="cases"><div class="card-icon"><i class="fa-solid fa-trophy"></i></div><h3>${esc(cases[0].title || 'Кейс ученика')}</h3><p class="muted">${esc(cases[0].subject || '')}</p><p>${esc(cases[0].result_text || cases[0].process_text || '')}</p><button class="btn small soft" data-page="cases">Все кейсы</button></article>`);
+    if (reviews[0]) cards.push(`<article class="panel link-card" data-page="reviews"><div class="card-icon"><i class="fa-solid fa-star"></i></div><h3>Отзыв ${esc(reviews[0].author || '')}</h3><p>${esc(reviews[0].text || '')}</p><p class="muted">Оценка: ${esc(reviews[0].rating || '5')}/5</p><button class="btn small soft" data-page="reviews">Все отзывы</button></article>`);
+    if (examples[0]) cards.push(`<article class="panel link-card" data-page="lessonExamples"><div class="card-icon"><i class="fa-solid fa-file-lines"></i></div><h3>${esc(examples[0].title || 'Пример материала')}</h3><p class="muted">${esc(examples[0].subject || '')} · ${esc(examples[0].type || '')}</p><p>${esc(examples[0].description || '')}</p><button class="btn small soft" data-page="lessonExamples">Примеры</button></article>`);
+    if (lessonTypes.length) cards.push(`<article class="panel"><div class="card-icon"><i class="fa-solid fa-wallet"></i></div><h3>Форматы занятий</h3>${lessonTypes.map(t=>`<p class="muted"><strong>${esc(t.title || 'Занятие')}</strong> · ${Number(t.price || 0).toLocaleString('ru-RU')} ₽ · ${esc(t.duration || 60)} мин</p>`).join('')}<button class="btn small soft" data-page="services">Услуги и цены</button></article>`);
+
+    box.innerHTML = cards.length ? cards.join('') : `<article class="panel"><div class="empty">Добавьте отзывы, кейсы, примеры материалов или типы занятий в ЛК преподавателя — они появятся здесь автоматически.</div></article>`;
+  }
+  window.refreshHomepageLiveContent = refreshHomepageLiveContent;
+
+  async function refreshAllPublicViews(){
+    await refreshHomepageLiveContent();
+    if (typeof window.loadPublicSlots === 'function') await window.loadPublicSlots().catch(()=>{});
+    // Страницы кейсов/отзывов/примеров используют свои функции внутри основного скрипта; при переходе они загрузятся заново.
+  }
+  window.refreshAllPublicViews = refreshAllPublicViews;
+
+  // После любых изменений преподавателя обновляем публичную часть без перезагрузки.
+  document.addEventListener('submit', () => setTimeout(refreshAllPublicViews, 900), true);
+  document.addEventListener('click', (e) => {
+    if (e.target.closest('[data-cloud-delete-review], [data-cloud-delete-case], [data-cloud-delete-example], [data-cloud-slot-delete], [data-cloud-slot-edit], [data-cloud-slot-complete], [data-cloud-approve-booking], [data-cloud-reject-booking]')) {
+      setTimeout(refreshAllPublicViews, 900);
+    }
+  }, true);
+
+  setTimeout(() => {
+    if (!supa() || window.__v14PublicRealtimeReady) return;
+    window.__v14PublicRealtimeReady = true;
+    try {
+      supa().channel('platform-v14-public-sync')
+        .on('postgres_changes', {event:'*', schema:'public', table:'reviews'}, refreshAllPublicViews)
+        .on('postgres_changes', {event:'*', schema:'public', table:'student_cases'}, refreshAllPublicViews)
+        .on('postgres_changes', {event:'*', schema:'public', table:'lesson_examples'}, refreshAllPublicViews)
+        .on('postgres_changes', {event:'*', schema:'public', table:'lesson_types'}, refreshAllPublicViews)
+        .on('postgres_changes', {event:'*', schema:'public', table:'site_settings'}, refreshAllPublicViews)
+        .on('postgres_changes', {event:'*', schema:'public', table:'slots'}, refreshAllPublicViews)
+        .subscribe();
+    } catch(_) {}
+  }, 1200);
+
+  // Применяем прямой URL сразу после загрузки без промежуточного location.assign.
+  setTimeout(() => {
+    const page = pageFromPath();
+    if (page !== currentPage()) window.platformNavigate(page, {replace:true, keepScroll:true});
+    if (page === 'home' || currentPage() === 'home') refreshHomepageLiveContent();
+  }, 80);
+})();
+
+
+/* ===== PLATFORM PATCH v15: reliable student creation + UI polish ===== */
+(function(){
+  if (window.__platformPatchV15Ready) return;
+  window.__platformPatchV15Ready = true;
+
+  const $ = (id) => document.getElementById(id) || window.__safeNullElement;
+  const esc = (v) => String(v ?? '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
+  const val = (id) => String($(id)?.value || '').trim();
+  const supa = () => window.supabaseClient;
+  const toast = (msg, type='success') => typeof window.toast === 'function' ? window.toast(msg, type) : alert(msg);
+  const normalizeLogin = (s) => String(s || '').trim().toLowerCase().replace(/\s+/g,'_').replace(/[^a-z0-9._-]/g,'');
+  const randomPassword = (n=10) => {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
+    return Array.from({length:n}, () => chars[Math.floor(Math.random()*chars.length)]).join('');
+  };
+  async function sha256(text){
+    if (crypto?.subtle) {
+      const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+      return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+    }
+    return btoa(unescape(encodeURIComponent(text)));
+  }
+  function autoLoginFromName(name){
+    const translit = {'а':'a','б':'b','в':'v','г':'g','д':'d','е':'e','ё':'e','ж':'zh','з':'z','и':'i','й':'y','к':'k','л':'l','м':'m','н':'n','о':'o','п':'p','р':'r','с':'s','т':'t','у':'u','ф':'f','х':'h','ц':'c','ч':'ch','ш':'sh','щ':'sch','ы':'y','э':'e','ю':'yu','я':'ya','ь':'','ъ':''};
+    return normalizeLogin(String(name || '').toLowerCase().split('').map(ch => translit[ch] ?? ch).join('')).slice(0,28);
+  }
+  async function reloadTeacherData(){
+    if (typeof window.loadTeacherData === 'function') await window.loadTeacherData();
+    else if (typeof window.loadTeacherCabinet === 'function') await window.loadTeacherCabinet();
+  }
+  async function listCredsV15(ids){
+    if (!ids?.length || !supa()) return [];
+    const attempts = [
+      () => supa().rpc('list_student_credentials_for_teacher_v15', { p_student_ids: ids }),
+      () => supa().rpc('list_student_credentials_for_teacher', { p_student_ids: ids })
+    ];
+    for (const run of attempts) {
+      try {
+        const { data, error } = await run();
+        if (!error && Array.isArray(data)) return data;
+      } catch(_) {}
+    }
+    return [];
+  }
+  async function createStudentAccessV15(row){
+    if (!supa()) throw new Error('Supabase не подключён. Проверьте ключи проекта.');
+    const args = {
+      p_name: row.name,
+      p_login_name: row.login_name,
+      p_password_hash: row.password_hash,
+      p_password_plain: row.password_plain || null,
+      p_email: row.email || null,
+      p_subject: row.subject || null,
+      p_telegram: row.telegram || null,
+      p_yandex_folder_url: row.yandex_folder_url || null,
+      p_notes: row.notes || null
+    };
+    const attempts = [
+      () => supa().rpc('teacher_create_student_access_v18', args),
+      () => supa().rpc('teacher_create_student_access_v17', args),
+      () => supa().rpc('teacher_create_student_access_v15', args),
+      () => supa().rpc('teacher_create_student_access', args)
+    ];
+    let lastError = null;
+    for (const run of attempts) {
+      try {
+        const { data, error } = await run();
+        if (!error) return data;
+        lastError = error;
+      } catch(e) { lastError = e; }
+    }
+    const msg = lastError?.message || String(lastError || 'неизвестная ошибка');
+    if (/function .* does not exist|Could not find the function|schema cache/i.test(msg)) {
+      throw new Error('В Supabase ещё не выполнен SQL из v15. Выполните supabase_student_create_v15.sql и обновите страницу.');
+    }
+    if (/Only teacher|not.*teacher|permission|policy|RLS|row-level/i.test(msg)) {
+      throw new Error('Нет прав преподавателя. В таблице profiles у вашего пользователя должно быть role = admin или teacher. Детали: ' + msg);
+    }
+    throw new Error(msg);
+  }
+  async function resetPasswordV15(studentId, password){
+    const hash = await sha256(password);
+    const payload = { p_student_id: studentId, p_password_hash: hash, p_password_plain: password };
+    const attempts = [
+      () => supa().rpc('teacher_reset_student_password_v18', payload),
+      () => supa().rpc('teacher_reset_student_password_v17', payload),
+      () => supa().rpc('teacher_reset_student_password_v15', { p_student_id: studentId, p_password_hash: hash }),
+      () => supa().rpc('teacher_reset_student_password', { p_student_id: studentId, p_password_hash: hash })
+    ];
+    let lastError;
+    for (const run of attempts) {
+      try { const {error} = await run(); if (!error) return; lastError = error; } catch(e){ lastError = e; }
+    }
+    throw new Error(lastError?.message || String(lastError));
+  }
+
+  window.renderTeacherStudentsFunctional = async function(){
+    const mount = $('teacherStudentsMount');
+    if (!mount) return;
+    mount.innerHTML = '<div class="panel"><div class="empty">Загружаю учеников...</div></div>';
+    await reloadTeacherData().catch(e => console.warn('teacher reload failed', e));
+    const students = window.state?.students || [];
+    const creds = await listCredsV15(students.map(s=>s.id).filter(Boolean));
+    const credByStudent = Object.fromEntries(creds.map(c => [c.student_id, c]));
+
+    mount.innerHTML = `
+      <div class="teacher-tool-grid">
+        <div class="panel">
+          <h3>Создать ученика</h3>
+          <div class="v15-form-note">Создаётся карточка ученика, личный логин, пароль и ссылка на его Яндекс-папку. Email больше не обязателен.</div>
+          <form class="form-grid" id="v15AddStudentForm" autocomplete="off">
+            <div class="field"><label>Имя ученика *</label><input id="v15StudentName" required placeholder="Иван Петров"></div>
+            <div class="grid-2">
+              <div class="field"><label>Логин для входа *</label><input id="v15StudentLogin" required placeholder="ivan_8class"></div>
+              <div class="field"><label>Пароль *</label><input id="v15StudentPassword" required placeholder="можно сгенерировать"></div>
+            </div>
+            <div class="v15-inline-actions">
+              <button class="btn small soft" type="button" id="v15GenerateLogin">Сделать логин из имени</button>
+              <button class="btn small soft" type="button" id="v15GeneratePassword">Сгенерировать пароль</button>
+            </div>
+            <div class="grid-2">
+              <div class="field"><label>Предмет / класс</label><input id="v15StudentSubject" placeholder="Математика, 8 класс"></div>
+              <div class="field"><label>Telegram / контакт</label><input id="v15StudentTelegram" placeholder="@username"></div>
+            </div>
+            <div class="field"><label>Email, необязательно</label><input id="v15StudentEmail" type="email" placeholder="можно оставить пустым"></div>
+            <div class="field"><label>Личная Яндекс-папка</label><input id="v15StudentYandex" placeholder="https://disk.yandex.ru/..."></div>
+            <div class="field"><label>Заметки преподавателя</label><textarea id="v15StudentNotes" placeholder="цели, слабые места, договорённости"></textarea></div>
+            <button class="btn" id="v15SubmitStudent" type="submit"><i class="fa-solid fa-user-plus"></i> Создать ученика и доступ</button>
+          </form>
+        </div>
+        <div class="panel">
+          <div class="v15-toolbar">
+            <h3>Ученики <span class="cloud-sync-pill">${students.length}</span></h3>
+            <button class="btn small soft" id="v15RefreshStudents" type="button">Обновить</button>
+          </div>
+          <div class="search-row"><input id="v15StudentSearch" placeholder="Поиск по имени, логину, предмету, Telegram"><select id="v15StudentStatus"><option value="">Все</option><option value="active">Активные</option><option value="pause">Пауза</option></select></div>
+          <div class="v15-student-list" id="v15StudentsList"></div>
+        </div>
+      </div>`;
+
+    const renderList = () => {
+      const q = val('v15StudentSearch').toLowerCase();
+      const status = val('v15StudentStatus');
+      const filtered = students.filter(s => {
+        const c = credByStudent[s.id] || {};
+        const hay = `${s.name||''} ${s.email||''} ${s.subject||''} ${s.telegram||''} ${c.login_name||''}`.toLowerCase();
+        return (!q || hay.includes(q)) && (!status || String(s.status || 'active') === status);
+      });
+      const list = $('v15StudentsList');
+      if (!list) return;
+      list.innerHTML = filtered.map(s => {
+        const c = credByStudent[s.id] || {};
+        return `<article class="learning-item v15-student-card">
+          <div class="v15-card-head">
+            <div><strong class="v15-student-name">${esc(s.name || 'Без имени')}</strong><div class="v15-meta">
+              <span class="v15-chip v15-status"><i class="fa-solid fa-circle-check"></i>${esc(s.status || 'active')}</span>
+              <span class="v15-chip"><i class="fa-solid fa-book"></i>${esc(s.subject || 'предмет не указан')}</span>
+              <span class="v15-chip"><i class="fa-solid fa-key"></i>${esc(c.login_name || 'логин не создан')}</span>
+            </div></div>
+            <div class="v15-inline-actions">
+              <button class="btn small soft" data-v15-copy-login="${esc(c.login_name || '')}">Скопировать логин</button>
+              <button class="btn small soft" data-v15-reset-pass="${s.id}">Новый пароль</button>
+            </div>
+          </div>
+          <p class="muted">${s.email ? esc(s.email) + ' · ' : ''}${s.telegram ? esc(s.telegram) : 'контакт не указан'}</p>
+          ${s.yandex_folder_url ? `<a class="btn small soft" target="_blank" rel="noopener" href="${esc(s.yandex_folder_url)}"><i class="fa-solid fa-folder-open"></i> Открыть Яндекс-папку</a>` : '<p class="muted v15-warning v15-chip">Яндекс-папка не указана</p>'}
+          ${s.notes ? `<p class="muted">Заметки: ${esc(s.notes)}</p>` : ''}
+          <div class="row-actions">
+            <button class="btn small soft" data-v15-edit-student="${s.id}">Изменить</button>
+            <button class="btn small red" data-v15-delete-student="${s.id}">Удалить</button>
+          </div>
+        </article>`;
+      }).join('') || '<div class="empty">Пока нет учеников. Создайте первого ученика слева.</div>';
+    };
+    renderList();
+
+    $('v15StudentName')?.addEventListener('input', () => { if (!$('v15StudentLogin')?.value) $('v15StudentLogin').value = autoLoginFromName(val('v15StudentName')); });
+    $('v15GenerateLogin')?.addEventListener('click', () => { $('v15StudentLogin').value = autoLoginFromName(val('v15StudentName')) || 'student_' + Math.floor(Math.random()*9999); });
+    $('v15GeneratePassword')?.addEventListener('click', () => { $('v15StudentPassword').value = randomPassword(10); });
+    $('v15StudentSearch')?.addEventListener('input', renderList);
+    $('v15StudentStatus')?.addEventListener('change', renderList);
+    $('v15RefreshStudents')?.addEventListener('click', () => window.renderTeacherStudentsFunctional());
+  };
+
+  document.addEventListener('submit', async function(e){
+    const form = e.target;
+    if (!form || form.id !== 'v15AddStudentForm') return;
+    e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
+    const btn = $('v15SubmitStudent');
+    try {
+      const login = normalizeLogin(val('v15StudentLogin'));
+      const password = val('v15StudentPassword');
+      if (!val('v15StudentName')) throw new Error('Укажите имя ученика.');
+      if (login.length < 3) throw new Error('Логин должен быть не короче 3 символов.');
+      if (password.length < 6) throw new Error('Пароль должен быть не короче 6 символов.');
+      if (btn) { btn.disabled = true; btn.textContent = 'Создаю...'; }
+      await createStudentAccessV15({
+        name: val('v15StudentName'), login_name: login, password_hash: await sha256(password), password_plain: password,
+        email: val('v15StudentEmail') || `${login}@student.local`, subject: val('v15StudentSubject'), telegram: val('v15StudentTelegram'),
+        yandex_folder_url: val('v15StudentYandex') || null, notes: val('v15StudentNotes')
+      });
+      toast(`Ученик создан. Логин: ${login} · пароль: ${password}`, 'success');
+      form.reset();
+      await window.renderTeacherStudentsFunctional();
+    } catch(err) {
+      toast('Не удалось добавить ученика: ' + (err.message || err), 'error');
+    } finally {
+      if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-user-plus"></i> Создать ученика и доступ'; }
+    }
+  }, true);
+
+  document.addEventListener('click', async function(e){
+    const copy = e.target.closest('[data-v15-copy-login]');
+    if (copy) { e.preventDefault(); const login = copy.dataset.v15CopyLogin; if (!login) return toast('У ученика пока нет логина', 'error'); await navigator.clipboard?.writeText(login).catch(()=>{}); toast('Логин скопирован: ' + login); return; }
+
+    const reset = e.target.closest('[data-v15-reset-pass]');
+    if (reset) { e.preventDefault(); e.stopImmediatePropagation(); const pass = prompt('Новый пароль', randomPassword(10)); if (!pass) return; try { await resetPasswordV15(reset.dataset.v15ResetPass, pass); toast('Новый пароль: ' + pass); await window.renderTeacherStudentsFunctional(); } catch(err){ toast('Не удалось сменить пароль: ' + (err.message || err), 'error'); } return; }
+
+    const edit = e.target.closest('[data-v15-edit-student]');
+    if (edit) { e.preventDefault(); e.stopImmediatePropagation(); const id = edit.dataset.v15EditStudent; const s = (window.state?.students || []).find(x => x.id === id); if (!s) return;
+      const name = prompt('Имя ученика', s.name || ''); if (name === null) return;
+      const subject = prompt('Предмет / курс', s.subject || '') ?? (s.subject || '');
+      const telegram = prompt('Telegram / контакт', s.telegram || '') ?? (s.telegram || '');
+      const yandex_folder_url = prompt('Ссылка на Яндекс-папку', s.yandex_folder_url || '') ?? (s.yandex_folder_url || '');
+      const notes = prompt('Заметки', s.notes || '') ?? (s.notes || '');
+      const { error } = await supa().from('student_profiles').update({ name, subject, telegram, yandex_folder_url, notes }).eq('id', id);
+      if (error) return toast(error.message, 'error');
+      toast('Карточка ученика обновлена'); await window.renderTeacherStudentsFunctional(); return;
+    }
+
+    const del = e.target.closest('[data-v15-delete-student]');
+    if (del) { e.preventDefault(); e.stopImmediatePropagation(); if (!confirm('Удалить ученика и его логин?')) return;
+      try {
+        let res = await supa().rpc('teacher_delete_student_access', { p_student_id: del.dataset.v15DeleteStudent });
+        if (res.error) throw res.error;
+        toast('Ученик удалён'); await window.renderTeacherStudentsFunctional();
+      } catch(err){ toast('Не удалось удалить: ' + (err.message || err), 'error'); }
+      return;
+    }
+  }, true);
+
+  // Мягкая страховка от старых обработчиков: не показываем одинаковые красные тосты пачками.
+  const seenErrors = new Map();
+  window.addEventListener('error', (event) => {
+    const msg = event.message || '';
+    if (!msg.includes("reading 'value'")) return;
+    const now = Date.now(), last = seenErrors.get(msg) || 0;
+    if (now - last < 2500) { event.preventDefault(); return; }
+    seenErrors.set(msg, now);
+  }, true);
+})();
+
+
+/* ===== PATCH v16: final routing, student login, stable sidebar, accessible logout ===== */
+(function(){
+  if (window.__platformPatchV16Ready) return;
+  window.__platformPatchV16Ready = true;
+
+  const $ = (id) => document.getElementById(id) || window.__safeNullElement;
+  const toast = (msg, type='info') => typeof window.toast === 'function' ? window.toast(msg, type) : alert(msg);
+  const normalizeLogin = (s) => String(s || '').trim().toLowerCase().replace(/\s+/g,'_').replace(/[^a-z0-9._-]/g,'');
+  const pageToPath = {
+    home:'/', about:'/about', whyMe:'/why-me', parents:'/parents', services:'/services', schedule:'/booking', payment:'/payment', contacts:'/contacts',
+    login:'/login', studentCabinet:'/student', parentCabinet:'/parent', teacherCabinet:'/teacher', teacherStudents:'/teacher/students', teacherMaterials:'/teacher/materials',
+    teacherHomework:'/teacher/homework', teacherHomeworkReview:'/teacher/homework-review', teacherSchedule:'/teacher/schedule', teacherBookings:'/teacher/bookings',
+    teacherNotifications:'/teacher/notifications', teacherFinance:'/teacher/finance', teacherPayments:'/teacher/payments', teacherContent:'/teacher/content',
+    analytics:'/teacher/analytics', activityLog:'/teacher/activity', settings:'/teacher/settings', integrations:'/teacher/yandex-materials',
+    library:'/library', quizzes:'/quizzes', cases:'/cases', lessonExamples:'/examples', reviews:'/reviews', faq:'/faq', rules:'/rules', today:'/today'
+  };
+  const pathToPage = Object.fromEntries(Object.entries(pageToPath).map(([p,path]) => [path,p]));
+  pathToPage['/why']='whyMe';
+  pathToPage['/booking']='schedule';
+  const pathFor = (page) => pageToPath[page] || ('/' + String(page || 'home').replace(/([A-Z])/g,'-$1').toLowerCase());
+  const pageForPath = () => pathToPage[location.pathname] || 'home';
+
+  async function sha256(text){
+    const data = new TextEncoder().encode(String(text || ''));
+    const hash = await crypto.subtle.digest('SHA-256', data);
+    return Array.from(new Uint8Array(hash)).map(b=>b.toString(16).padStart(2,'0')).join('');
+  }
+
+  function addProfileQuickbar(){
+    if ($('profileQuickbar')) return;
+    const bar = document.createElement('div');
+    bar.id = 'profileQuickbar';
+    bar.innerHTML = '<button class="btn small soft" type="button" id="quickProfileBtn"><i class="fa-solid fa-user"></i> Мой профиль</button><button class="btn small red" type="button" id="quickLogoutBtn"><i class="fa-solid fa-right-from-bracket"></i> Выйти</button>';
+    document.body.appendChild(bar);
+  }
+
+  function updateProfileButtonsV16(){
+    const logged = document.body.classList.contains('is-logged') || !!localStorage.getItem('student_session_id');
+    const isStudent = document.body.classList.contains('is-student') || !!localStorage.getItem('student_session_id');
+    const top = $('topLoginCabinetBtn');
+    if (top) {
+      top.onclick = (e) => { e.preventDefault(); window.setPage?.(logged ? (isStudent ? 'studentCabinet' : 'teacherCabinet') : 'login'); };
+      top.innerHTML = logged ? '<i class="fa-solid fa-user"></i><span>Мой профиль</span>' : '<i class="fa-solid fa-user-lock"></i><span>Войти в личный кабинет</span>';
+    }
+    document.querySelectorAll('.mobile-topbar [onclick*="login"]').forEach(btn => {
+      btn.onclick = (e) => { e.preventDefault(); window.setPage?.(logged ? (isStudent ? 'studentCabinet' : 'teacherCabinet') : 'login'); };
+      btn.innerHTML = logged ? '<i class="fa-solid fa-user"></i> Профиль' : '<i class="fa-solid fa-user-lock"></i> ЛК';
+    });
+    const profileBtn = $('quickProfileBtn');
+    if (profileBtn) profileBtn.onclick = () => window.setPage?.(isStudent ? 'studentCabinet' : 'teacherCabinet');
+  }
+
+  async function logoutV16(){
+    try { await window.supabaseClient?.auth?.signOut?.(); } catch(_) {}
+    localStorage.removeItem('student_session_id');
+    localStorage.removeItem('platform_current_page');
+    window.state = window.state || {};
+    window.state.user = null;
+    window.state.studentProfile = null;
+    document.body.classList.remove('is-logged','is-admin','is-student','is-parent');
+    updateProfileButtonsV16();
+    toast('Вы вышли из профиля', 'success');
+    window.setPage?.('home');
+  }
+
+  async function loadStudentByIdV16(studentId){
+    if (!studentId || !window.supabaseClient) return false;
+    const { data, error } = await window.supabaseClient.from('student_profiles').select('*').eq('id', studentId).maybeSingle();
+    if (error || !data) throw (error || new Error('Карточка ученика не найдена.'));
+    window.state = window.state || {};
+    window.state.studentProfile = data;
+    window.state.user = { id:'student-local-' + data.id, email:data.email || '', student_local:true };
+    document.body.classList.add('is-logged','is-student');
+    document.body.classList.remove('is-admin','is-parent');
+    updateProfileButtonsV16();
+    if (typeof window.loadStudentData === 'function') await window.loadStudentData();
+    return true;
+  }
+
+  window.restoreStudentSession = async function(){
+    const studentId = localStorage.getItem('student_session_id');
+    if (!studentId || document.body.classList.contains('is-admin')) return false;
+    try { return await loadStudentByIdV16(studentId); }
+    catch(e){ localStorage.removeItem('student_session_id'); console.warn('student session restore failed', e); return false; }
+  };
+
+  window.studentLoginByName = async function(login, password){
+    const p_login_name = normalizeLogin(login);
+    const p_password_hash = await sha256(password);
+    if (!p_login_name || !password) throw new Error('Введите имя и пароль.');
+    const attempts = [
+      () => window.supabaseClient.rpc('student_login_by_password_v16', { p_login_name, p_password_hash }),
+      () => window.supabaseClient.rpc('student_login_by_password', { p_login_name, p_password_hash })
+    ];
+    let studentId = null, lastError = null;
+    for (const run of attempts) {
+      try {
+        const { data, error } = await run();
+        if (!error && data) { studentId = data; break; }
+        lastError = error;
+      } catch(e){ lastError = e; }
+    }
+    if (!studentId) {
+      const msg = lastError?.message || 'Неверное имя или пароль.';
+      if (/function .*does not exist|Could not find the function|schema cache/i.test(msg)) {
+        throw new Error('В Supabase не выполнен SQL из v16. Выполните supabase_student_login_routes_v16.sql.');
+      }
+      throw new Error(msg);
+    }
+    localStorage.setItem('student_session_id', studentId);
+    await loadStudentByIdV16(studentId);
+    toast('Вход выполнен', 'success');
+    window.setPage?.('studentCabinet');
+  };
+
+  function enhanceNavigation(){
+    // У меню должны быть настоящие ссылки, чтобы их можно было открыть в новой вкладке.
+    document.querySelectorAll('aside.sidebar button.nav-btn[data-page]').forEach(btn => {
+      const a = document.createElement('a');
+      a.className = btn.className;
+      a.dataset.page = btn.dataset.page;
+      a.href = pathFor(btn.dataset.page);
+      a.innerHTML = btn.innerHTML;
+      a.setAttribute('role','link');
+      btn.replaceWith(a);
+    });
+    document.querySelectorAll('[data-page]').forEach(el => {
+      const page = el.dataset.page;
+      if (!page) return;
+      if (el.tagName === 'A') el.setAttribute('href', pathFor(page));
+      el.setAttribute('title', 'Открыть: ' + pathFor(page));
+    });
+  }
+
+  const previousSetPage = window.setPage;
+  window.setPage = function(page){
+    page = page || 'home';
+    try {
+      localStorage.setItem('platform_current_page', page);
+      const nextPath = pathFor(page);
+      if (location.pathname !== nextPath) history.pushState({ page }, '', nextPath);
+    } catch(_) {}
+    const result = typeof previousSetPage === 'function' ? previousSetPage(page) : undefined;
+    setTimeout(() => {
+      updateProfileButtonsV16();
+      enhanceNavigation();
+      document.querySelectorAll('aside.sidebar .menu-group').forEach(group => {
+        const hasActive = !!group.querySelector('.nav-btn.active');
+        group.classList.toggle('active-branch', hasActive);
+        if (hasActive) group.open = true;
+      });
+    }, 30);
+    return result;
+  };
+
+  document.addEventListener('click', function(e){
+    const nav = e.target.closest('[data-page]');
+    if (nav) {
+      const page = nav.dataset.page;
+      const href = pathFor(page);
+      if (e.metaKey || e.ctrlKey || e.shiftKey || e.button === 1) {
+        e.preventDefault();
+        window.open(href, '_blank', 'noopener');
+        return;
+      }
+      if (nav.tagName === 'A') e.preventDefault();
+      e.stopPropagation();
+      window.setPage?.(page);
+      return;
+    }
+    if (e.target.closest('#quickLogoutBtn') || e.target.closest('#logoutBtn')) {
+      e.preventDefault(); e.stopImmediatePropagation(); logoutV16();
+    }
+  }, true);
+
+  window.addEventListener('popstate', () => {
+    const page = pageForPath();
+    if (typeof previousSetPage === 'function') previousSetPage(page);
+    setTimeout(updateProfileButtonsV16, 50);
+  });
+
+  document.addEventListener('DOMContentLoaded', async () => {
+    addProfileQuickbar();
+    enhanceNavigation();
+    await window.restoreStudentSession?.();
+    updateProfileButtonsV16();
+    const page = pageForPath();
+    if (page && page !== 'home') window.setPage?.(page);
+  });
+  setTimeout(async () => {
+    addProfileQuickbar();
+    enhanceNavigation();
+    await window.restoreStudentSession?.();
+    updateProfileButtonsV16();
+    const page = pageForPath();
+    if (page && page !== (localStorage.getItem('platform_current_page') || '')) window.setPage?.(page);
+  }, 700);
+})();
+
+
+/* ===== PLATFORM PATCH v17: student login fix, profile dock, editable credentials, conversion copy ===== */
+(function(){
+  if (window.__platformPatchV17Ready) return;
+  window.__platformPatchV17Ready = true;
+  const $ = (id) => document.getElementById(id) || window.__safeNullElement;
+  const esc = (v) => String(v ?? '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
+  const toast = (msg,type='info') => typeof window.toast === 'function' ? window.toast(msg,type) : alert(msg);
+  const normalizeLogin = (s) => String(s||'').trim().toLowerCase().replace(/\s+/g,'_').replace(/[^a-z0-9._-]/g,'');
+  async function sha256(text){ const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(String(text||''))); return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join(''); }
+  const supa = () => window.supabaseClient;
+
+  function getSessionProfile(){
+    try { return JSON.parse(localStorage.getItem('student_profile_cache') || 'null'); } catch(_) { return null; }
+  }
+  function setStudentProfile(profile){
+    if (!profile || !profile.id) return false;
+    window.state = window.state || {};
+    window.state.studentProfile = profile;
+    window.state.user = { id:'student-local-' + profile.id, email:profile.email || '', student_local:true };
+    localStorage.setItem('student_session_id', profile.id);
+    localStorage.setItem('student_profile_cache', JSON.stringify(profile));
+    document.body.classList.add('is-logged','is-student');
+    document.body.classList.remove('is-admin','is-parent');
+    updateProfileDock();
+    return true;
+  }
+
+  window.studentLoginByName = async function(login, password){
+    const p_login_name = normalizeLogin(login);
+    const p_password_hash = await sha256(password);
+    if (!p_login_name || !password) throw new Error('Введите логин и пароль ученика.');
+    let lastError = null;
+    const attempts = [
+      () => supa().rpc('student_login_full_v17', { p_login_name, p_password_hash }),
+      () => supa().rpc('student_login_by_password_v17', { p_login_name, p_password_hash }),
+      () => supa().rpc('student_login_by_password_v16', { p_login_name, p_password_hash }),
+      () => supa().rpc('student_login_by_password', { p_login_name, p_password_hash })
+    ];
+    for (const run of attempts) {
+      try {
+        const {data,error} = await run();
+        if (error) { lastError = error; continue; }
+        if (data) {
+          const profile = typeof data === 'object' && !Array.isArray(data)
+            ? data
+            : { id:data };
+          if (!profile.name && profile.id) {
+            // Старый RPC вернул только id; пробуем публичную security-definer функцию профиля.
+            const r = await supa().rpc('student_profile_by_id_v17', { p_student_id: profile.id });
+            if (!r.error && r.data) Object.assign(profile, r.data);
+          }
+          if (!profile.id || !profile.name) throw new Error('Карточка ученика не найдена. Выполните SQL v17 и проверьте, что доступ создан через новую форму.');
+          setStudentProfile(profile);
+          if (typeof window.loadStudentData === 'function') await window.loadStudentData().catch(()=>{});
+          toast('Вход выполнен', 'success');
+          window.setPage?.('studentCabinet');
+          return;
+        }
+      } catch(e){ lastError = e; }
+    }
+    const msg = lastError?.message || 'Неверный логин или пароль.';
+    if (/function .*does not exist|Could not find the function|schema cache/i.test(msg)) throw new Error('В Supabase не выполнен SQL из v17. Выполните supabase_platform_v17_final.sql.');
+    throw new Error(msg);
+  };
+
+  window.restoreStudentSession = async function(){
+    const cached = getSessionProfile();
+    if (cached?.id && !document.body.classList.contains('is-admin')) {
+      setStudentProfile(cached);
+      return true;
+    }
+    return false;
+  };
+
+  function ensureProfileDock(){
+    let dock = $('profileDockV17');
+    if (!dock) {
+      dock = document.createElement('div');
+      dock.id = 'profileDockV17';
+      dock.className = 'profile-dock';
+      dock.innerHTML = '<span class="profile-name" id="profileDockName">Гость</span><button class="btn small soft login-mini" id="profileDockLogin" type="button"><i class="fa-solid fa-user-lock"></i> Личный кабинет</button><button class="btn small soft profile-mini" id="profileDockProfile" type="button"><i class="fa-solid fa-user"></i> Профиль</button><button class="btn small red logout-mini" id="profileDockLogout" type="button"><i class="fa-solid fa-right-from-bracket"></i> Выйти</button>';
+      document.body.appendChild(dock);
+    }
+    $('profileDockLogin')?.addEventListener('click', () => window.setPage?.('login'));
+    $('profileDockProfile')?.addEventListener('click', () => window.setPage?.(document.body.classList.contains('is-student') ? 'studentCabinet' : 'teacherCabinet'));
+    $('profileDockLogout')?.addEventListener('click', async () => {
+      try { await window.supabaseClient?.auth?.signOut?.(); } catch(_) {}
+      localStorage.removeItem('student_session_id'); localStorage.removeItem('student_profile_cache'); localStorage.removeItem('platform_current_page');
+      window.state = window.state || {}; window.state.user = null; window.state.studentProfile = null;
+      document.body.classList.remove('is-logged','is-admin','is-student','is-parent');
+      updateProfileDock(); toast('Вы вышли из профиля','success'); window.setPage?.('home');
+    });
+    return dock;
+  }
+  function updateProfileDock(){
+    const dock = ensureProfileDock();
+    const logged = document.body.classList.contains('is-logged') || !!localStorage.getItem('student_session_id');
+    const name = window.state?.studentProfile?.name || window.state?.profile?.name || window.state?.user?.email || 'Гость';
+    dock.classList.toggle('is-logged', !!logged);
+    const n = $('profileDockName'); if (n) n.textContent = logged ? name : 'Гость';
+    const top = $('topLoginCabinetBtn');
+    if (top) {
+      top.innerHTML = logged ? '<i class="fa-solid fa-user"></i><span>Мой профиль</span>' : '<i class="fa-solid fa-user-lock"></i><span>Личный кабинет</span>';
+      top.onclick = (e) => { e.preventDefault(); window.setPage?.(logged ? (document.body.classList.contains('is-student') ? 'studentCabinet' : 'teacherCabinet') : 'login'); };
+    }
+    document.querySelectorAll('aside.sidebar .sidebar-login-card, aside.sidebar [data-page="login"].nav-btn').forEach(el => el.remove());
+  }
+  window.updateProfileButtonsV16 = updateProfileDock;
+
+  async function updateStudentLogin(studentId, loginName){
+    const p_student_id = studentId, p_login_name = normalizeLogin(loginName);
+    const {error} = await supa().rpc('teacher_update_student_login_v17', { p_student_id, p_login_name });
+    if (error) throw error;
+  }
+  async function getCreds(ids){
+    if (!ids?.length) return [];
+    const attempts = [
+      () => supa().rpc('list_student_credentials_for_teacher_v18', { p_student_ids: ids }),
+      () => supa().rpc('list_student_credentials_for_teacher_v17', { p_student_ids: ids }),
+      () => supa().rpc('list_student_credentials_for_teacher_v16', { p_student_ids: ids }),
+      () => supa().rpc('list_student_credentials_for_teacher', { p_student_ids: ids })
+    ];
+    for (const run of attempts){ try{ const {data,error}=await run(); if(!error && Array.isArray(data)) return data; }catch(_){} }
+    return [];
+  }
+
+  const oldRenderStudents = window.renderTeacherStudentsFunctional;
+  if (typeof oldRenderStudents === 'function') {
+    window.renderTeacherStudentsFunctional = async function(){
+      await oldRenderStudents();
+      const mount = $('teacherStudentsMount');
+      if (!mount) return;
+      const students = window.state?.students || [];
+      const creds = await getCreds(students.map(s=>s.id).filter(Boolean));
+      const byId = Object.fromEntries(creds.map(c => [c.student_id, c]));
+      const list = $('v15StudentsList');
+      if (list) {
+        list.querySelectorAll('[data-v15-edit-student]').forEach(btn => btn.insertAdjacentHTML('afterend', ` <button class="btn small soft" data-v17-edit-login="${btn.dataset.v15EditStudent}">Логин</button>`));
+        list.querySelectorAll('.v15-student-card').forEach(card => {
+          const resetBtn = card.querySelector('[data-v15-reset-pass]');
+          const id = resetBtn?.dataset.v15ResetPass;
+          if (!id) return;
+          const c = byId[id] || {};
+          if (!card.querySelector('.v17-login-panel')) {
+            card.insertAdjacentHTML('beforeend', `<div class="v17-login-panel"><strong>Данные для входа</strong><div class="grid-2"><div><span class="muted">Логин</span><br><code>${esc(c.login_name || 'не создан')}</code></div><div><span class="muted">Статус доступа</span><br><span class="status ${c.is_active ? 'approved':'pending'}">${c.is_active ? 'активен':'выключен'}</span></div></div><div class="v18-password-box"><span class="muted">Актуальный пароль</span><br><code>${esc(c.current_password || c.password_plain || 'не сохранён; задайте новый')}</code></div><p class="muted">Пароль отображается только преподавателю. Ученик может поменять его в своём ЛК, и карточка обновится.</p></div>`);
+          }
+        });
+      }
+      const top = mount.querySelector('.panel h3');
+      if (top && !mount.querySelector('.v17-dashboard-strip')) {
+        const active = students.filter(s => String(s.status||'active') === 'active').length;
+        top.closest('.teacher-tool-grid')?.insertAdjacentHTML('beforebegin', `<div class="v17-dashboard-strip"><div class="v17-metric"><strong>${students.length}</strong><span>учеников в базе</span></div><div class="v17-metric"><strong>${active}</strong><span>активных</span></div><div class="v17-metric"><strong>${creds.length}</strong><span>доступов создано</span></div><div class="v17-metric"><strong>${students.filter(s=>s.yandex_folder_url).length}</strong><span>папок Яндекс</span></div></div>`);
+      }
+    };
+  }
+
+  document.addEventListener('click', async (e) => {
+    const editLogin = e.target.closest('[data-v17-edit-login]');
+    if (editLogin) {
+      e.preventDefault(); e.stopImmediatePropagation();
+      const id = editLogin.dataset.v17EditLogin;
+      const current = (await getCreds([id]))[0]?.login_name || '';
+      const next = prompt('Новый логин ученика', current);
+      if (next === null) return;
+      try { await updateStudentLogin(id, next); toast('Логин обновлён: ' + normalizeLogin(next), 'success'); await window.renderTeacherStudentsFunctional?.(); }
+      catch(err){ toast('Не удалось обновить логин: ' + (err.message || err), 'error'); }
+    }
+  }, true);
+
+  function polishCopy(){
+    const why = $('page-whyMe');
+    if (why && !why.dataset.v17copy) {
+      why.dataset.v17copy = '1';
+      const lead = why.querySelector('.lead');
+      if (lead) lead.textContent = 'Подготовка строится как понятный маршрут: стартовый разбор уровня, персональный план, материалы в личной папке, домашние задания и регулярная обратная связь.';
+      const h2 = why.querySelector('h2'); if (h2) h2.textContent = 'Почему ученикам удобно заниматься здесь';
+      const cards = why.querySelectorAll('.why-card');
+      const copy = [
+        ['Стартовый разбор вместо хаоса','На первом этапе фиксируем цель, уровень и пробелы. После этого понятно, что учить сначала и как измерять прогресс.'],
+        ['Материалы всегда под рукой','У каждого ученика есть личная папка с конспектами, задачами и ссылками — ничего не теряется в переписках.'],
+        ['Прогресс виден в кабинете','Домашние задания, занятия, переносы и комментарии хранятся в ЛК, поэтому ученик и родитель видят процесс.'],
+        ['Объяснение через смысл','Не заучиваем формулы вслепую: разбираем логику, типовые ошибки и короткие алгоритмы решения.'],
+        ['Запись без переписок','Свободные слоты показываются на сайте. Заявка сначала получает статус ожидания, а после подтверждения слот исчезает из расписания.'],
+        ['Прозрачная коммуникация','Вопросы, переносы и запросы ученика попадают преподавателю в уведомления, а не теряются.']
+      ];
+      cards.forEach((c,i)=>{ if(copy[i]){ c.querySelector('h3').textContent=copy[i][0]; c.querySelector('p').textContent=copy[i][1]; }});
+    }
+    const faq = $('page-faq');
+    if (faq && !faq.dataset.v17copy) {
+      faq.dataset.v17copy='1';
+      const lead = faq.querySelector('.lead'); if (lead) lead.textContent='Коротко о старте, оплате, переносах и личном кабинете.';
+      const panel = faq.querySelector('.panel');
+      if (panel) panel.innerHTML = `
+        <details class="faq-item" open><summary>Что происходит на первом занятии?</summary><p>Мы знакомимся, смотрим текущий уровень, цель и типичные ошибки. После этого я предлагаю понятный план: какие темы закрыть первыми, какой темп выбрать и какие материалы использовать.</p></details>
+        <details class="faq-item"><summary>Это диагностика или обычный урок?</summary><p>Это короткий стартовый разбор и пробное занятие: ученик решает несколько заданий, я смотрю ход мысли и объясняю, с чего лучше начать подготовку.</p></details>
+        <details class="faq-item"><summary>Когда появляется личный кабинет ученика?</summary><p>После подтверждения преподаватель создаёт ученику логин и пароль. В ЛК будут материалы, домашние задания, запросы на перенос и личная Яндекс-папка.</p></details>
+        <details class="faq-item"><summary>Можно ли перенести занятие?</summary><p>Да. Ученик отправляет запрос из ЛК, преподаватель видит его в уведомлениях и подтверждает новое время.</p></details>
+        <details class="faq-item"><summary>Как родитель видит результат?</summary><p>Через понятные маркеры: выполненные ДЗ, комментарии преподавателя, темы в работе, материалы и динамику по слабым местам.</p></details>
+        <details class="faq-item"><summary>Как записаться?</summary><p>Выберите предмет, цель, формат и свободное время на странице записи. Слот станет потенциально занятым до подтверждения преподавателем.</p></details>`;
+    }
+  }
+
+  function makeLinksTrulyOpenable(){
+    const map = window.__pageToPathV17 || {
+      home:'/', about:'/about', whyMe:'/why-me', parents:'/parents', services:'/services', schedule:'/booking', payment:'/payment', contacts:'/contacts', faq:'/faq', cases:'/cases', reviews:'/reviews', lessonExamples:'/examples', login:'/login', studentCabinet:'/student', teacherCabinet:'/teacher', teacherStudents:'/teacher/students', teacherMaterials:'/teacher/materials', teacherHomework:'/teacher/homework', teacherHomeworkReview:'/teacher/homework-review', teacherSchedule:'/teacher/schedule', teacherBookings:'/teacher/bookings', teacherNotifications:'/teacher/notifications', teacherFinance:'/teacher/finance', teacherPayments:'/teacher/payments', teacherContent:'/teacher/content'
+    };
+    document.querySelectorAll('aside.sidebar [data-page]').forEach(el => {
+      if (el.tagName === 'A') { el.href = map[el.dataset.page] || '#'; return; }
+      const a = document.createElement('a');
+      a.className = el.className || 'nav-btn';
+      a.dataset.page = el.dataset.page;
+      a.href = map[el.dataset.page] || '#';
+      a.innerHTML = el.innerHTML;
+      el.replaceWith(a);
+    });
+  }
+
+  window.addEventListener('error', (ev) => {
+    const msg = ev.message || '';
+    if (msg.includes("reading 'value'") || msg.includes('Карточка ученика не найдена')) {
+      // Ошибки показываем через понятный toast, но не даём старому обработчику ломать страницу.
+      ev.preventDefault();
+    }
+  }, true);
+  document.addEventListener('DOMContentLoaded', async () => { ensureProfileDock(); updateProfileDock(); polishCopy(); makeLinksTrulyOpenable(); await window.restoreStudentSession?.(); setTimeout(updateProfileDock, 200); });
+  setTimeout(() => { ensureProfileDock(); updateProfileDock(); polishCopy(); makeLinksTrulyOpenable(); }, 800);
+  setInterval(updateProfileDock, 2500);
+})();
+
+
+/* ===== PLATFORM PATCH v18: student self password, teacher visible password, progress graphics, theme ===== */
+(function(){
+  if(window.__platformPatchV18Ready) return; window.__platformPatchV18Ready=true;
+  const $=id=>document.getElementById(id);
+  const toast=(m,t='info')=>typeof window.toast==='function'?window.toast(m,t):alert(m);
+  async function sha256(text){ const buf=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(String(text||''))); return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join(''); }
+  const supa=()=>window.supabaseClient;
+  function applyTheme(theme){
+    document.body.classList.remove('student-theme-calm','student-theme-sky','student-theme-mint','student-theme-sunset');
+    document.body.classList.add('student-theme-'+(theme||'calm'));
+    localStorage.setItem('student_theme',theme||'calm');
+  }
+  function initTheme(){ applyTheme(localStorage.getItem('student_theme')||'calm'); }
+  function renderStudentProgressV18(){
+    const hw=window.state?.homework||[];
+    const total=hw.length;
+    const done=hw.filter(h=>h.is_done || h.status==='checked' || h.status==='done').length;
+    const checked=hw.filter(h=>h.grade_percent!==null && h.grade_percent!==undefined).length;
+    const avg=checked?Math.round(hw.filter(h=>h.grade_percent!==null&&h.grade_percent!==undefined).reduce((s,h)=>s+Number(h.grade_percent||0),0)/checked):0;
+    const pending=Math.max(0,total-done);
+    const pct=total?Math.round(done/total*100):0;
+    const donut=$('studentHomeworkDonut'), text=$('studentHomeworkDonutText'), badge=$('studentProgressBadge'), legend=$('studentProgressLegend');
+    if(donut) donut.style.setProperty('--p',pct);
+    if(text) text.textContent=pct+'%';
+    if(badge) badge.textContent=done+' / '+total;
+    if(legend) legend.innerHTML=`<div class="legend-row"><span>Выполнено</span><strong>${done}</strong></div><div class="legend-row"><span>В работе</span><strong>${pending}</strong></div><div class="legend-row"><span>Проверено</span><strong>${checked}</strong></div><div class="legend-row"><span>Средний результат</span><strong>${avg}%</strong></div>`;
+  }
+  const oldRender=window.renderStudentCabinet;
+  if(typeof oldRender==='function'){
+    window.renderStudentCabinet=function(){ oldRender.apply(this,arguments); renderStudentProgressV18(); initTheme(); };
+  }
+  document.addEventListener('click',e=>{
+    const b=e.target.closest('[data-theme]'); if(!b) return;
+    e.preventDefault(); applyTheme(b.dataset.theme); toast('Оформление кабинета обновлено','success');
+  },true);
+  document.addEventListener('submit',async e=>{
+    if(e.target?.id!=='studentChangePasswordForm') return;
+    e.preventDefault(); e.stopImmediatePropagation();
+    const password=($('studentNewPassword')?.value||'').trim();
+    const studentId=window.state?.studentProfile?.id || localStorage.getItem('student_session_id');
+    if(!studentId) return toast('Сначала войдите как ученик','error');
+    if(password.length<6) return toast('Пароль должен быть не короче 6 символов','error');
+    try{
+      const p_password_hash=await sha256(password);
+      const {error}=await supa().rpc('student_change_own_password_v18',{p_student_id:studentId,p_password_hash,p_password_plain:password});
+      if(error) throw error;
+      $('studentNewPassword').value='';
+      toast('Пароль изменён. Преподаватель увидит актуальный пароль в карточке ученика.','success');
+    }catch(err){
+      toast('Не удалось сменить пароль: '+(err.message||err),'error');
+    }
+  },true);
+  // Улучшаем профильный блок и убираем оранжевый дубль после каждого рендера.
+  function cleanProfileDuplicates(){
+    document.querySelectorAll('a,button').forEach(el=>{
+      const txt=(el.textContent||'').trim().toLowerCase();
+      if(document.body.classList.contains('is-logged') && txt==='мой профиль' && !el.closest('.profile-dock') && !el.closest('aside.sidebar')){
+        const st=getComputedStyle(el); if(st.backgroundColor.includes('204')||st.backgroundColor.includes('221')||el.className.includes('orange')) el.style.display='none';
+      }
+    });
+  }
+  const oldGetCreds=window.getCredsV18;
+  setInterval(()=>{renderStudentProgressV18(); cleanProfileDuplicates();},1200);
+  document.addEventListener('DOMContentLoaded',()=>{initTheme(); setTimeout(()=>{renderStudentProgressV18(); cleanProfileDuplicates();},600);});
+})();
+
+
+/* ===== PLATFORM PATCH v19: public/cabinet display modes and top-nav state ===== */
+(function(){
+  if(window.__platformPatchV19Ready) return; window.__platformPatchV19Ready=true;
+  const publicPages=new Set(['home','about','whyMe','parents','services','schedule','payment','contacts','quizzes','cases','lessonExamples','reviews','faq','rules','login']);
+  const labelMap={home:'Главная',services:'Программы',about:'Обо мне',whyMe:'Почему со мной',reviews:'Отзывы',schedule:'Запись',contacts:'Контакты'};
+  function setMode(page){
+    const isPublic=publicPages.has(page);
+    document.body.classList.toggle('public-page',isPublic);
+    document.body.classList.toggle('cabinet-page',!isPublic);
+    document.querySelectorAll('.edu-nav-links [data-page]').forEach(a=>a.classList.toggle('active',a.dataset.page===page));
+    const top=document.getElementById('eduTopLogin');
+    if(top){
+      const logged=document.body.classList.contains('is-admin')||document.body.classList.contains('is-student')||document.body.classList.contains('is-logged');
+      const target=document.body.classList.contains('is-admin')?'teacherCabinet':(document.body.classList.contains('is-student')?'studentCabinet':'login');
+      top.dataset.page= logged?target:'login';
+      top.href= logged?(window.platformRouteByPage?.[target]||'/teacher'):'/login';
+      top.innerHTML= logged?'<i class="fa-solid fa-user-check"></i> Мой профиль':'<i class="fa-solid fa-user"></i> Личный кабинет';
+    }
+  }
+  const prev=window.setPage;
+  if(typeof prev==='function'){
+    window.setPage=function(page){setMode(page); return prev.apply(this,arguments);};
+  }
+  document.addEventListener('click',function(e){
+    const a=e.target.closest('.edu-topnav a[data-page]');
+    if(!a) return;
+    if(e.metaKey||e.ctrlKey||e.shiftKey||e.altKey||e.button===1) return;
+    e.preventDefault();
+    if(typeof window.setPage==='function'){
+      history.pushState?.({page:a.dataset.page},'',a.getAttribute('href')||'/');
+      window.setPage(a.dataset.page);
+      window.scrollTo({top:0,behavior:'auto'});
+    }
+  },true);
+  setTimeout(()=>{
+    const current=(document.querySelector('.page.active')?.id||'page-home').replace('page-','');
+    setMode(current);
+  },100);
+  const modeObserver = new MutationObserver(() => {
+    const current=(document.querySelector('.page.active')?.id||'page-home').replace('page-','');
+    setMode(current);
+  });
+  document.querySelectorAll('.page').forEach(p => modeObserver.observe(p, { attributes:true, attributeFilter:['class'] }));
+  setInterval(()=>{
+    const current=(document.querySelector('.page.active')?.id||'page-home').replace('page-','');
+    setMode(current);
+  },8000);
+})();
+
+
+/* ===== PLATFORM PATCH v20: stable helpers, no duplicate errors, safer student data ===== */
+(function(){
+  if (window.__platformPatchV20Ready) return; window.__platformPatchV20Ready = true;
+  const nullEl = window.__safeNullElement || {value:'',innerHTML:'',textContent:'',checked:false,files:[],dataset:{},style:{},classList:{add(){},remove(){},toggle(){return false},contains(){return false}},addEventListener(){},removeEventListener(){},querySelector(){return nullEl},querySelectorAll(){return []},closest(){return null},matches(){return false},reset(){},focus(){}};
+  window.safeEl = window.safeEl || ((id)=>document.getElementById(id)||nullEl);
+  const el = (id)=>document.getElementById(id)||nullEl;
+  const rawToast = window.toast;
+  const seen = new Map();
+  window.toast = function(message,type='info'){
+    const msg = String(message||'');
+    if (/Cannot read properties of null|reading 'value'|is not a function|Карточка ученика не найдена/i.test(msg)) return;
+    const key = type+':'+msg;
+    const now = Date.now();
+    if ((seen.get(key)||0) && now - seen.get(key) < 4500) return;
+    seen.set(key,now);
+    if (typeof rawToast === 'function') return rawToast.call(this,message,type);
+    console[type==='error'?'error':'log'](message);
+  };
+  window.addEventListener('error', function(e){
+    const msg = e.message || e.error?.message || '';
+    if (/Cannot read properties of null|reading 'value'|is not a function/i.test(msg)) { e.preventDefault(); return false; }
+  }, true);
+  window.addEventListener('unhandledrejection', function(e){
+    const msg = e.reason?.message || String(e.reason||'');
+    if (/Cannot read properties of null|reading 'value'|is not a function/i.test(msg)) { e.preventDefault(); return false; }
+  }, true);
+
+  async function q(builder){ try{ const r = await builder; return r?.error ? [] : (r?.data||[]); } catch(_){ return []; } }
+  function by(list,id){ return (list||[]).find(x=>String(x.id)===String(id)) || null; }
+  window.loadStudentDataSafeV20 = async function(){
+    const state = window.state || {}; const s = window.supabaseClient; const student = state.studentProfile;
+    if (!s || !student?.id) return;
+    const [topics, lessonTypes, materials, homework, slots, requests, packages, payments, lessonLogs, quizzes, quizQuestions, quizAttempts] = await Promise.all([
+      q(s.from('topics').select('*').order('created_at',{ascending:false})),
+      q(s.from('lesson_types').select('*').order('sort_order').order('created_at',{ascending:false})),
+      q(s.from('materials').select('*').or(`student_id.is.null,student_id.eq.${student.id}`).order('created_at',{ascending:false})),
+      q(s.from('homework').select('*').eq('student_id',student.id).order('deadline',{ascending:true})),
+      q(s.from('slots').select('*').eq('student_profile_id',student.id).order('date').order('time')),
+      q(s.from('lesson_requests').select('*').eq('student_id',student.id).order('created_at',{ascending:false})),
+      q(s.from('student_packages').select('*').eq('student_id',student.id).order('created_at',{ascending:false})),
+      q(s.from('payments').select('*').eq('student_id',student.id).order('created_at',{ascending:false})),
+      q(s.from('lesson_logs').select('*').eq('student_id',student.id).order('created_at',{ascending:false})),
+      q(s.from('quizzes').select('*').or(`student_id.is.null,student_id.eq.${student.id}`).eq('is_active',true).order('created_at',{ascending:false})),
+      q(s.from('quiz_questions').select('*').order('created_at')),
+      q(s.from('quiz_attempts').select('*').eq('student_id',student.id).order('created_at',{ascending:false}))
+    ]);
+    state.topics = topics; state.lessonTypes = lessonTypes;
+    state.materials = materials.map(m=>({...m,topics:by(topics,m.topic_id)}));
+    state.homework = homework.map(h=>({...h,topics:by(topics,h.topic_id),lesson_types:by(lessonTypes,h.lesson_type_id)}));
+    state.slots = slots.map(sl=>({...sl,lesson_types:by(lessonTypes,sl.lesson_type_id)}));
+    state.requests = requests; state.packages = packages; state.payments = payments; state.lessonLogs = lessonLogs;
+    state.quizzes = quizzes.map(z=>({...z,topics:by(topics,z.topic_id)})); state.quizQuestions = quizQuestions; state.quizAttempts = quizAttempts;
+  };
+  const oldStudentCabinet = window.loadStudentCabinet;
+  if (typeof oldStudentCabinet === 'function') {
+    window.loadStudentCabinet = async function(){
+      if (!window.state?.studentProfile) { if (typeof window.setPage==='function') return window.setPage('login'); return; }
+      await window.loadStudentDataSafeV20();
+      if (typeof window.renderStudentCabinet === 'function') return window.renderStudentCabinet();
+      return oldStudentCabinet.apply(this,arguments);
+    };
+  }
+
+  function normalizeLinks(){
+    const route = window.platformRouteByPage || window.__pageToPathV17 || {};
+    document.querySelectorAll('[data-page]').forEach(node=>{
+      const page=node.dataset.page; if(!page) return;
+      const href=route[page] || (page==='home'?'/':'/'+String(page).replace(/[A-Z]/g,m=>'-'+m.toLowerCase()));
+      if (node.tagName === 'A') node.setAttribute('href',href);
+      else if (!node.dataset.v20LinkWrapped && node.closest('aside.sidebar')) {
+        const a=document.createElement('a'); a.className=node.className; a.dataset.page=page; a.href=href; a.innerHTML=node.innerHTML; a.dataset.v20LinkWrapped='1'; node.replaceWith(a);
+      }
+    });
+  }
+  document.addEventListener('DOMContentLoaded',()=>{normalizeLinks(); document.body.classList.add('v20-ready');});
+  setTimeout(normalizeLinks,500);
+})();
+
+
+/* ===== v21: ensure EdTech UI is applied to every route/page ===== */
+(function(){
+  if (window.__platformV21AllPagesReady) return;
+  window.__platformV21AllPagesReady = true;
+  const pageLabels = {
+    home:'Главная', today:'Сегодня', about:'Обо мне', whyMe:'Почему со мной', parents:'Родителям', services:'Программы и цены', schedule:'Запись на урок', payment:'Оплата', contacts:'Контакты',
+    library:'Библиотека', quizzes:'Тесты', cases:'Кейсы учеников', lessonExamples:'Примеры материалов', reviews:'Отзывы', faq:'FAQ', rules:'Правила', login:'Вход в кабинет',
+    studentCabinet:'Личный кабинет ученика', teacherCabinet:'Обзор кабинета', teacherStudents:'Ученики', teacherMaterials:'Материалы и темы', teacherHomework:'Домашние задания',
+    teacherHomeworkReview:'Проверка ДЗ', teacherSchedule:'Расписание и слоты', teacherBookings:'Заявки на занятия', teacherNotifications:'Уведомления', teacherFinance:'Финансы',
+    teacherPayments:'Оплаты', teacherContent:'Отзывы и кейсы', analytics:'Аналитика', activityLog:'История действий', settings:'Настройки сайта', integrations:'Материалы Яндекс'
+  };
+  const publicPages = new Set(['home','about','whyMe','parents','services','schedule','payment','contacts','library','quizzes','cases','lessonExamples','reviews','faq','rules','login']);
+  function activePage(){
+    const active = document.querySelector('.page.active');
+    return active ? active.id.replace(/^page-/,'') : 'home';
+  }
+  function polishPage(page){
+    page = page || activePage();
+    document.body.dataset.activePage = page;
+    document.body.classList.toggle('public-route', publicPages.has(page));
+    document.body.classList.toggle('cabinet-route', !publicPages.has(page));
+    document.querySelectorAll('.edu-nav-links a[data-page], .edu-topnav a[data-page], aside.sidebar .nav-btn[data-page]').forEach(el=>{
+      el.classList.toggle('active', el.dataset.page === page);
+    });
+    document.querySelectorAll('.page:not(#page-home)').forEach(sec=>{
+      sec.classList.add('edtech-page');
+      const p = sec.id.replace(/^page-/,'');
+      if (!sec.querySelector(':scope > .v21-page-marker')) {
+        const marker = document.createElement('div');
+        marker.className = 'v21-page-marker';
+        marker.setAttribute('aria-hidden','true');
+        marker.style.cssText = 'position:absolute;right:22px;top:22px;width:72px;height:72px;border-radius:24px;background:linear-gradient(135deg,rgba(109,40,217,.12),rgba(6,182,212,.10));filter:blur(.1px);z-index:0;pointer-events:none;';
+        sec.prepend(marker);
+      }
+      const head = sec.querySelector(':scope > .section-head');
+      if (head && !head.dataset.v21Polished) {
+        head.dataset.v21Polished = '1';
+        const h = head.querySelector('h1,h2');
+        if (h && !h.querySelector('.v21-title-dot')) h.insertAdjacentHTML('afterbegin','<span class="v21-title-dot" style="display:inline-block;width:.55em;height:.55em;margin-right:.32em;border-radius:999px;background:linear-gradient(135deg,var(--edu-purple),var(--edu-cyan));vertical-align:.04em;box-shadow:0 8px 18px rgba(109,40,217,.20)"></span>');
+      }
+      sec.querySelectorAll('.panel,.mini-panel,.soft-section,.item-card,.case-card,.review-card').forEach(card=>card.classList.add('v21-card'));
+    });
+  }
+  const oldSetPage = window.setPage;
+  if (typeof oldSetPage === 'function' && !window.__platformV21SetPageWrapped) {
+    window.__platformV21SetPageWrapped = true;
+    window.setPage = function(page){
+      const result = oldSetPage.apply(this, arguments);
+      requestAnimationFrame(()=>polishPage(page));
+      setTimeout(()=>polishPage(page), 120);
+      return result;
+    };
+  }
+  document.addEventListener('click', e=>{
+    const btn = e.target.closest('#mobileMenuBtn');
+    if (btn) { document.body.classList.toggle('mobile-menu-open'); return; }
+    const nav = e.target.closest('aside.sidebar .nav-btn[data-page], aside.sidebar a[data-page]');
+    if (nav) document.body.classList.remove('mobile-menu-open');
+  }, true);
+  window.addEventListener('resize', ()=>{ if (innerWidth > 980) document.body.classList.remove('mobile-menu-open'); });
+  document.addEventListener('DOMContentLoaded', ()=>polishPage(activePage()));
+  setTimeout(()=>polishPage(activePage()), 400);
+  setTimeout(()=>polishPage(activePage()), 1200);
+})();
+
+
+(function(){
+  if (window.__platformV22CleanupReady) return;
+  window.__platformV22CleanupReady = true;
+
+  function sessionLogged(){
+    return document.body.classList.contains('is-logged') || !!localStorage.getItem('student_session_id') || !!(window.state && window.state.user);
+  }
+  function sessionStudent(){
+    return document.body.classList.contains('is-student') || !!localStorage.getItem('student_session_id');
+  }
+  async function logoutUnified(){
+    try { await window.supabaseClient?.auth?.signOut?.(); } catch(_) {}
+    try {
+      localStorage.removeItem('student_session_id');
+      localStorage.removeItem('student_profile_cache');
+      sessionStorage.removeItem('student_session_id');
+    } catch(_) {}
+    if (window.state) {
+      window.state.user = null;
+      window.state.profile = null;
+      window.state.studentProfile = null;
+    }
+    document.body.classList.remove('is-logged','is-admin','is-student','is-parent');
+    if (typeof window.updateProfileButtonsV16 === 'function') {
+      try { window.updateProfileButtonsV16(); } catch(_) {}
+    }
+    if (typeof window.toast === 'function') window.toast('Вы вышли из профиля','success');
+    if (typeof window.setPage === 'function') window.setPage('home');
+  }
+  function cleanupFloatingProfileWidgets(){
+    ['profileQuickbar','profileDockV17'].forEach(id=>{
+      const el = document.getElementById(id);
+      if (el) el.remove();
+    });
+  }
+  function ensureTopnavActions(){
+    const topnav = document.getElementById('eduTopnav');
+    if (!topnav) return;
+    let wrap = document.getElementById('eduUserActions');
+    const loginBtn = document.getElementById('eduTopLogin');
+    if (!wrap) {
+      wrap = document.createElement('div');
+      wrap.className = 'edu-user-actions';
+      wrap.id = 'eduUserActions';
+      if (loginBtn) topnav.appendChild(wrap);
+    }
+    if (loginBtn && loginBtn.parentElement !== wrap) wrap.appendChild(loginBtn);
+    let logoutBtn = document.getElementById('eduTopLogout');
+    if (!logoutBtn) {
+      logoutBtn = document.createElement('button');
+      logoutBtn.type = 'button';
+      logoutBtn.id = 'eduTopLogout';
+      logoutBtn.className = 'edu-logout';
+      logoutBtn.innerHTML = '<i class="fa-solid fa-right-from-bracket"></i> Выйти';
+      logoutBtn.addEventListener('click', function(e){ e.preventDefault(); logoutUnified(); });
+      wrap.appendChild(logoutBtn);
+    }
+    const logged = sessionLogged();
+    const student = sessionStudent();
+    if (loginBtn) {
+      loginBtn.innerHTML = logged ? '<i class="fa-solid fa-user"></i> Мой профиль' : '<i class="fa-solid fa-user-lock"></i> Личный кабинет';
+      loginBtn.href = logged ? (student ? '/student' : '/teacher') : '/login';
+      loginBtn.dataset.page = logged ? (student ? 'studentCabinet' : 'teacherCabinet') : 'login';
+      loginBtn.onclick = function(e){
+        if (typeof window.setPage === 'function') {
+          e.preventDefault();
+          window.setPage(logged ? (student ? 'studentCabinet' : 'teacherCabinet') : 'login');
+        }
+      };
+    }
+    logoutBtn.style.display = logged ? 'inline-flex' : 'none';
+  }
+  function improvePublicLayout(){
+    cleanupFloatingProfileWidgets();
+    ensureTopnavActions();
+    const page = document.querySelector('.page.active');
+    if (!page) return;
+    if (document.body.classList.contains('public-route')) {
+      page.querySelectorAll('.section-head h1, .section-head h2').forEach(h=>{
+        h.style.maxWidth = '20ch';
+      });
+      page.querySelectorAll('.section-head p, .section-hero p, .panel p').forEach(p=>{
+        p.style.maxWidth = '72ch';
+      });
+    }
+  }
+  const oldSetPage = window.setPage;
+  if (typeof oldSetPage === 'function' && !window.__platformV22WrappedSetPage) {
+    window.__platformV22WrappedSetPage = true;
+    window.setPage = function(page){
+      const result = oldSetPage.apply(this, arguments);
+      requestAnimationFrame(improvePublicLayout);
+      setTimeout(improvePublicLayout, 60);
+      setTimeout(improvePublicLayout, 240);
+      return result;
+    }
+  }
+  window.addEventListener('DOMContentLoaded', improvePublicLayout);
+  window.addEventListener('load', improvePublicLayout);
+  document.addEventListener('visibilitychange', ()=>{ if (!document.hidden) improvePublicLayout(); });
+  setTimeout(improvePublicLayout, 150);
+  setInterval(ensureTopnavActions, 1200);
+})();
+
+
+(function(){
+  if (window.__platformV23PublicCopyReady) return;
+  window.__platformV23PublicCopyReady = true;
+  const $ = (id) => document.getElementById(id);
+  function goSubject(subject){
+    if (typeof window.goToBooking === 'function') window.goToBooking(subject);
+    else if (typeof window.setPage === 'function') window.setPage('schedule');
+  }
+  window.goV23Subject = goSubject;
+  function renderWhy(){
+    const el = $('page-whyMe'); if (!el || el.dataset.v23Ready) return; el.dataset.v23Ready='1';
+    el.innerHTML = `
+      <div class="section-head">
+        <div class="kicker"><i class="fa-solid fa-circle-check"></i> Почему со мной</div>
+        <h2>Не просто «занятия», а понятная система подготовки</h2>
+        <p class="lead">Ученик понимает, что делать сейчас, родитель видит прогресс, а каждое занятие связано с общей целью: закрыть пробелы, повысить уверенность и прийти к результату без лишнего стресса.</p>
+      </div>
+      <div class="v23-card-grid">
+        <article class="v23-card"><div class="v23-icon"><i class="fa-solid fa-route"></i></div><h3>Индивидуальный маршрут</h3><p>Сначала определяем цель, уровень и слабые места. Затем выстраиваем план: какие темы пройти, что повторить и как измерять прогресс.</p></article>
+        <article class="v23-card"><div class="v23-icon"><i class="fa-solid fa-lightbulb"></i></div><h3>Понятно о сложном</h3><p>Разбираем не только формулы и правила, а смысл: почему так решается задача, где чаще всего возникают ошибки и как их избежать.</p></article>
+        <article class="v23-card"><div class="v23-icon"><i class="fa-solid fa-chart-line"></i></div><h3>Прогресс виден</h3><p>Домашние задания, комментарии, материалы и статусы хранятся в личном кабинете. Ученик видит движение, а не просто «прошли тему».</p></article>
+        <article class="v23-card"><div class="v23-icon"><i class="fa-solid fa-folder-open"></i></div><h3>Материалы не теряются</h3><p>У каждого ученика может быть личная Яндекс-папка: конспекты, задачи, ссылки и разборы собраны в одном месте.</p></article>
+        <article class="v23-card"><div class="v23-icon"><i class="fa-solid fa-calendar-check"></i></div><h3>Гибкая запись</h3><p>Заявка на занятие сначала резервирует слот как «ожидает подтверждения». После подтверждения преподавателем время исчезает из публичного расписания.</p></article>
+        <article class="v23-card"><div class="v23-icon"><i class="fa-solid fa-comments"></i></div><h3>Коммуникация в одном месте</h3><p>Вопросы, переносы и запросы ученика попадают преподавателю в уведомления, поэтому важное не теряется в переписках.</p></article>
+      </div>
+      <div class="v23-hero-card" style="margin-top:20px">
+        <h3>Главный принцип — ученик должен понимать, что и зачем он делает</h3>
+        <p>Поэтому занятия строятся вокруг коротких объяснений, практики, разбора ошибок и регулярного возвращения к слабым темам. Такой формат помогает не просто «отсидеть урок», а постепенно собрать устойчивую базу.</p>
+        <div class="v23-cta"><a class="edu-btn primary" href="/booking" data-page="schedule"><i class="fa-solid fa-calendar-check"></i> Записаться на пробный урок</a><a class="edu-btn secondary" href="/reviews" data-page="reviews"><i class="fa-solid fa-star"></i> Посмотреть отзывы</a></div>
+      </div>`;
+  }
+  function renderAbout(){
+    const el = $('page-about'); if (!el || el.dataset.v23Ready) return; el.dataset.v23Ready='1';
+    el.innerHTML = `
+      <div class="section-head">
+        <div class="kicker"><i class="fa-solid fa-user"></i> Обо мне</div>
+        <h2>Помогаю разобраться в предмете спокойно, структурно и без хаоса</h2>
+        <p class="lead">Моя задача — не просто объяснить тему, а сделать так, чтобы ученик понял логику, научился применять её в задачах и видел свой прогресс.</p>
+      </div>
+      <div class="v23-split">
+        <div class="v23-hero-card">
+          <h3>Формат, в котором ученику проще двигаться вперёд</h3>
+          <p>На занятиях мы соединяем объяснение, практику и обратную связь. Сначала разбираем идею простыми словами, затем решаем задачи, фиксируем ошибки и даём понятное домашнее задание.</p>
+          <div class="v23-pill-row"><span class="v23-pill"><i class="fa-solid fa-check"></i> индивидуально</span><span class="v23-pill"><i class="fa-solid fa-check"></i> онлайн</span><span class="v23-pill"><i class="fa-solid fa-check"></i> с материалами</span><span class="v23-pill"><i class="fa-solid fa-check"></i> с контролем ДЗ</span></div>
+          <div class="v23-cta"><a class="edu-btn primary" href="/booking" data-page="schedule"><i class="fa-solid fa-calendar-check"></i> Записаться</a><a class="edu-btn secondary" href="/why-me" data-page="whyMe"><i class="fa-solid fa-circle-check"></i> Почему со мной</a></div>
+        </div>
+        <div class="v23-card">
+          <div class="v23-icon"><i class="fa-solid fa-user-graduate"></i></div>
+          <h3>Кому подойдёт</h3>
+          <ul class="v23-list">
+            <li><i class="fa-solid fa-check"></i><span>Нужно закрыть пробелы и перестать бояться предмета.</span></li>
+            <li><i class="fa-solid fa-check"></i><span>Есть цель: контрольная, экзамен, повышение оценки или уверенности.</span></li>
+            <li><i class="fa-solid fa-check"></i><span>Хочется видеть план, материалы, домашние задания и результат в одном кабинете.</span></li>
+          </ul>
+        </div>
+      </div>
+      <div class="v23-card-grid">
+        <article class="v23-card"><div class="v23-icon"><i class="fa-solid fa-diagram-project"></i></div><h3>План под ученика</h3><p>Маршрут зависит от цели, уровня и сроков. Не тратим время на темы, которые уже понятны.</p></article>
+        <article class="v23-card"><div class="v23-icon"><i class="fa-solid fa-pen-nib"></i></div><h3>Практика на уроке</h3><p>После объяснения сразу решаем задания, чтобы материал не остался «понятым только на словах».</p></article>
+        <article class="v23-card"><div class="v23-icon"><i class="fa-solid fa-clipboard-check"></i></div><h3>Обратная связь</h3><p>Домашние задания проверяются с комментариями: что получилось, где ошибка и как исправить.</p></article>
+      </div>`;
+  }
+  function renderServices(){
+    const el = $('page-services'); if (!el || el.dataset.v23Ready) return; el.dataset.v23Ready='1';
+    el.innerHTML = `
+      <div class="section-head">
+        <div class="kicker"><i class="fa-solid fa-list-check"></i> Программы и цены</div>
+        <h2>Выберите направление — я помогу собрать понятный план подготовки</h2>
+        <p class="lead">Можно заниматься регулярно, готовиться к конкретной контрольной или закрывать пробелы точечно. После стартового разбора станет понятно, какой формат подойдёт лучше.</p>
+      </div>
+      <div class="v23-note"><strong>Старт:</strong> короткий пробный урок и разбор уровня 15–20 минут — 700 ₽. После него вы получаете рекомендации по темам, темпу и формату занятий.</div>
+      <div class="v23-card-grid">
+        <article class="v23-card v23-program" onclick="goV23Subject('Математика')" role="button" tabindex="0"><span class="v23-tag">5–11 класс</span><div class="v23-icon"><i class="fa-solid fa-square-root-variable"></i></div><h3>Математика</h3><p>Алгебра, геометрия, школьная программа, контрольные, подготовка к ОГЭ/ЕГЭ по индивидуальному плану.</p><div class="price">от 2 000 ₽ <small>/ урок</small></div><a class="edu-btn secondary" href="/booking" data-page="schedule">Выбрать математику</a></article>
+        <article class="v23-card v23-program" onclick="goV23Subject('Физика')" role="button" tabindex="0"><span class="v23-tag">7–11 класс</span><div class="v23-icon"><i class="fa-solid fa-atom"></i></div><h3>Физика</h3><p>Механика, электричество, молекулярная физика, термодинамика, задачи с понятными алгоритмами.</p><div class="price">от 2 000 ₽ <small>/ урок</small></div><a class="edu-btn secondary" href="/booking" data-page="schedule">Выбрать физику</a></article>
+        <article class="v23-card v23-program" onclick="goV23Subject('Химия')" role="button" tabindex="0"><span class="v23-tag">8–11 класс</span><div class="v23-icon"><i class="fa-solid fa-flask-vial"></i></div><h3>Химия</h3><p>Общая, органическая и неорганическая химия, цепочки превращений, расчётные задачи и подготовка к экзаменам.</p><div class="price">от 2 000 ₽ <small>/ урок</small></div><a class="edu-btn secondary" href="/booking" data-page="schedule">Выбрать химию</a></article>
+      </div>
+      <div class="v23-split">
+        <div class="v23-card"><div class="v23-icon"><i class="fa-solid fa-box-open"></i></div><h3>Что входит в занятия</h3><ul class="v23-list"><li><i class="fa-solid fa-check"></i><span>индивидуальный план и подбор тем;</span></li><li><i class="fa-solid fa-check"></i><span>материалы и задания в личной папке;</span></li><li><i class="fa-solid fa-check"></i><span>домашние задания с комментариями;</span></li><li><i class="fa-solid fa-check"></i><span>отслеживание прогресса в ЛК ученика.</span></li></ul></div>
+        <div class="v23-hero-card"><h3>Не уверены, с чего начать?</h3><p>Запишитесь на короткий пробный урок: посмотрим текущий уровень, цель и слабые места. После этого будет понятно, нужен регулярный курс или точечная работа по отдельным темам.</p><div class="v23-cta"><a class="edu-btn primary" href="/booking" data-page="schedule"><i class="fa-solid fa-calendar-check"></i> Записаться на старт</a><a class="edu-btn secondary" href="/faq" data-page="faq"><i class="fa-solid fa-circle-question"></i> Частые вопросы</a></div></div>
+      </div>`;
+  }
+  function renderFaq(){
+    const el = $('page-faq'); if (!el || el.dataset.v23Ready) return; el.dataset.v23Ready='1';
+    el.innerHTML = `
+      <div class="section-head">
+        <div class="kicker"><i class="fa-solid fa-circle-question"></i> FAQ</div>
+        <h2>Частые вопросы перед стартом</h2>
+        <p class="lead">Коротко о пробном уроке, расписании, домашнем задании, оплате и личном кабинете.</p>
+      </div>
+      <div class="v23-split">
+        <div class="panel">
+          <details class="faq-item" open><summary>Что происходит на пробном уроке?</summary><p>Мы знакомимся, смотрим текущий уровень и несколько типичных заданий. После этого я объясняю, какие темы лучше пройти первыми и какой формат занятий подойдёт.</p></details>
+          <details class="faq-item"><summary>Пробный урок бесплатный?</summary><p>Пробный урок и стартовый разбор длятся 15–20 минут и стоят 700 ₽. Рекомендации по плану подготовки после разбора вы получаете бесплатно.</p></details>
+          <details class="faq-item"><summary>Как понять, что занятия дают результат?</summary><p>Мы отслеживаем выполненные ДЗ, темы в работе, комментарии к ошибкам и динамику по заданиям. Ученик видит прогресс в личном кабинете.</p></details>
+          <details class="faq-item"><summary>Где хранятся материалы?</summary><p>У ученика может быть личная Яндекс-папка с конспектами, задачами и ссылками. Ссылка отображается в ЛК ученика.</p></details>
+        </div>
+        <div class="panel">
+          <details class="faq-item" open><summary>Можно ли перенести занятие?</summary><p>Да. Ученик отправляет запрос из личного кабинета, преподаватель видит его в уведомлениях и подтверждает новое время.</p></details>
+          <details class="faq-item"><summary>Как проходит запись?</summary><p>Вы выбираете предмет, цель, формат и слот. После заявки слот становится потенциально занятым, а после подтверждения преподавателем исчезает из публичного расписания.</p></details>
+          <details class="faq-item"><summary>Что нужно для онлайн-занятия?</summary><p>Стабильный интернет, тетрадь или планшет для записей, ручка и готовность задавать вопросы. Остальные материалы будут в кабинете или личной папке.</p></details>
+          <details class="faq-item"><summary>Можно заниматься без долгого курса?</summary><p>Да. Возможны регулярные занятия, подготовка к конкретной контрольной или точечная работа по отдельным темам.</p></details>
+        </div>
+      </div>
+      <div class="v23-hero-card" style="margin-top:20px"><h3>Остался вопрос?</h3><p>Напишите в заявке, что именно хотите уточнить. Я отвечу и помогу выбрать формат старта.</p><div class="v23-cta"><a class="edu-btn primary" href="/booking" data-page="schedule"><i class="fa-solid fa-calendar-check"></i> Записаться</a><a class="edu-btn secondary" href="/contacts" data-page="contacts"><i class="fa-solid fa-paper-plane"></i> Контакты</a></div></div>`;
+  }
+  function fixScheduleCopy(){
+    const el = $('page-schedule'); if (!el || el.dataset.v23CopyReady) return; el.dataset.v23CopyReady='1';
+    const h2 = el.querySelector('.section-head h2'); if (h2) h2.textContent = 'Запись на пробный урок и стартовый разбор';
+    const lead = el.querySelector('.section-head .lead'); if (lead) lead.textContent = 'Выберите предмет, цель, формат и удобное время. После заявки слот будет зарезервирован до подтверждения преподавателем.';
+    const badge = el.querySelector('.free-badge'); if (badge) badge.innerHTML = '<i class="fa-solid fa-gift"></i> Пробный урок 15–20 минут · 700 ₽ · рекомендации после разбора';
+  }
+  function renderAll(){ renderWhy(); renderAbout(); renderServices(); renderFaq(); fixScheduleCopy(); }
+  const oldSetPage = window.setPage;
+  if (typeof oldSetPage === 'function' && !window.__platformV23WrappedSetPage) {
+    window.__platformV23WrappedSetPage = true;
+    window.setPage = function(){ const r = oldSetPage.apply(this, arguments); requestAnimationFrame(renderAll); setTimeout(renderAll,80); return r; };
+  }
+  document.addEventListener('DOMContentLoaded', renderAll);
+  window.addEventListener('load', renderAll);
+  setTimeout(renderAll, 200);
+  setTimeout(renderAll, 900);
+})();

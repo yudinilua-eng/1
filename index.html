@@ -5127,24 +5127,38 @@ body.is-logged #profileQuickbar{display:flex!important;}
     const discounts = { 1: 0, 4: .03, 8: .05, 12: .10 };
 
     const __nullElement = {
-      value: '', innerHTML: '', textContent: '', checked: false, files: [], dataset: {}, style: {},
-      classList: { add(){}, remove(){}, toggle(){}, contains(){ return false; } },
-      addEventListener(){}, removeEventListener(){}, appendChild(){}, remove(){}, focus(){}, reset(){},
-      querySelector(){ return null; }, querySelectorAll(){ return []; }, setAttribute(){}, getAttribute(){ return null; }
+      value: '', innerHTML: '', textContent: '', checked: false, disabled: false, files: [], dataset: {}, style: {},
+      classList: { add(){}, remove(){}, toggle(){ return false; }, contains(){ return false; } },
+      addEventListener(){}, removeEventListener(){}, appendChild(){}, remove(){}, focus(){}, reset(){}, click(){},
+      closest(){ return null; }, matches(){ return false; }, replaceWith(){}, insertAdjacentHTML(){}, scrollIntoView(){},
+      querySelector(){ return __nullElement; }, querySelectorAll(){ return []; }, setAttribute(){}, getAttribute(){ return null; }
     };
+    window.__safeNullElement = __nullElement;
+    window.safeEl = (id) => document.getElementById(id) || window.__safeNullElement;
     const $ = (id) => document.getElementById(id) || __nullElement;
     const esc = (v) => String(v ?? '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'","&#039;");
 
 
 
+    window.__platformLastErrorToast = window.__platformLastErrorToast || new Map();
+    function shouldShowErrorToast(msg) {
+      msg = String(msg || 'ошибка');
+      if (/reading 'value'|Cannot set properties of null|is not a function/i.test(msg)) return false;
+      const now = Date.now();
+      const last = window.__platformLastErrorToast.get(msg) || 0;
+      if (now - last < 8000) return false;
+      window.__platformLastErrorToast.set(msg, now);
+      return true;
+    }
     window.addEventListener('error', (event) => {
-      console.error('Platform JS error:', event.error || event.message);
-      if (typeof toast === 'function') toast('Ошибка интерфейса: ' + (event.message || 'проверьте консоль'), 'error');
+      const msg = event.message || event.error?.message || 'ошибка интерфейса';
+      console.warn('Platform JS warning:', event.error || msg);
+      if (shouldShowErrorToast(msg) && typeof toast === 'function') toast('Ошибка интерфейса: ' + msg, 'error');
     });
     window.addEventListener('unhandledrejection', (event) => {
-      console.error('Platform async error:', event.reason);
       const msg = event.reason?.message || String(event.reason || 'неизвестная ошибка');
-      if (typeof toast === 'function') toast('Ошибка загрузки данных: ' + msg, 'error');
+      console.warn('Platform async warning:', event.reason);
+      if (shouldShowErrorToast(msg) && typeof toast === 'function') toast('Ошибка загрузки данных: ' + msg, 'error');
     });
 
     function byIdValue(id, fallback = '') {
@@ -5161,13 +5175,15 @@ body.is-logged #profileQuickbar{display:flex!important;}
         const result = await builder;
         if (result.error) {
           console.warn(label + ' skipped:', result.error.message);
-          toast('Supabase: ' + label + ' — ' + result.error.message, 'error');
+          if (!/does not exist|relationship|foreign key|permission denied|row-level security/i.test(result.error.message || '')) {
+            toast('Supabase: ' + label + ' — ' + result.error.message, 'error');
+          }
           return { data: fallback, error: result.error };
         }
         return result;
       } catch (err) {
         console.warn(label + ' failed:', err);
-        toast('Supabase: ' + label + ' недоступно', 'error');
+        if (!/Failed to fetch|NetworkError/i.test(err?.message || '')) toast('Supabase: ' + label + ' недоступно', 'error');
         return { data: fallback, error: err };
       }
     }
@@ -7303,16 +7319,16 @@ body.is-logged #profileQuickbar{display:flex!important;}
     async function loadStudentData() {
       if (!state.studentProfile) return;
       const [materials, homework, slots, requests, packages, payments, lessonLogs, quizzes, quizQuestions, quizAttempts] = await Promise.all([
-        supabaseClient.from('materials').select('*, topics(title)').or(`student_id.is.null,student_id.eq.${state.studentProfile.id}`).order('created_at', { ascending:false }),
-        supabaseClient.from('homework').select('*, topics(title), lesson_types(title, price, duration)').eq('student_id', state.studentProfile.id).order('deadline', { ascending:true }),
-        supabaseClient.from('slots').select('*, lesson_types(title, subject, price, duration)').eq('student_profile_id', state.studentProfile.id).order('date').order('time'),
+        supabaseClient.from('materials').select('*').or(`student_id.is.null,student_id.eq.${state.studentProfile.id}`).order('created_at', { ascending:false }),
+        supabaseClient.from('homework').select('*').eq('student_id', state.studentProfile.id).order('deadline', { ascending:true }),
+        supabaseClient.from('slots').select('*').eq('student_profile_id', state.studentProfile.id).order('date').order('time'),
         supabaseClient.from('lesson_requests').select('*').eq('student_id', state.studentProfile.id).order('created_at', { ascending:false }),
-        supabaseClient.from('student_packages').select('*, lesson_types(title, price, duration), subscriptions(title, lessons_count, discount_percent)').eq('student_id', state.studentProfile.id).order('created_at', { ascending:false }),
-        supabaseClient.from('payments').select('*, lesson_types(title), student_packages(lessons_total, lessons_used)').eq('student_id', state.studentProfile.id).order('created_at', { ascending:false }),
-        supabaseClient.from('lesson_logs').select('*, slots(date,time), lesson_types(title)').eq('student_id', state.studentProfile.id).order('created_at', { ascending:false }),
-        supabaseClient.from('quizzes').select('*, topics(title)').or(`student_id.is.null,student_id.eq.${state.studentProfile.id}`).eq('is_active', true).order('created_at', { ascending:false }),
+        supabaseClient.from('student_packages').select('*').eq('student_id', state.studentProfile.id).order('created_at', { ascending:false }),
+        supabaseClient.from('payments').select('*').eq('student_id', state.studentProfile.id).order('created_at', { ascending:false }),
+        supabaseClient.from('lesson_logs').select('*').eq('student_id', state.studentProfile.id).order('created_at', { ascending:false }),
+        supabaseClient.from('quizzes').select('*').or(`student_id.is.null,student_id.eq.${state.studentProfile.id}`).eq('is_active', true).order('created_at', { ascending:false }),
         supabaseClient.from('quiz_questions').select('*').order('created_at'),
-        supabaseClient.from('quiz_attempts').select('*, quizzes(title)').eq('student_id', state.studentProfile.id).order('created_at', { ascending:false })
+        supabaseClient.from('quiz_attempts').select('*').eq('student_id', state.studentProfile.id).order('created_at', { ascending:false })
       ]);
       state.materials = materials.data || [];
       state.homework = homework.data || [];
@@ -8857,7 +8873,7 @@ body.is-logged #profileQuickbar{display:flex!important;}
   if (window.__platformPatchV11Ready) return;
   window.__platformPatchV11Ready = true;
 
-  const $ = (id) => document.getElementById(id);
+  const $ = (id) => document.getElementById(id) || window.__safeNullElement;
   const toast = (msg, type='info') => typeof window.toast === 'function' ? window.toast(msg, type) : alert(msg);
   const trim = (id) => String($(id)?.value || '').trim();
 
@@ -8946,7 +8962,7 @@ body.is-logged #profileQuickbar{display:flex!important;}
   if (window.__platformPatchV13Ready) return;
   window.__platformPatchV13Ready = true;
 
-  const $ = (id) => document.getElementById(id);
+  const $ = (id) => document.getElementById(id) || window.__safeNullElement;
   const val = (id, fallback='') => { const el = $(id); return el && 'value' in el ? String(el.value ?? '').trim() : fallback; };
   const setVal = (id, value='') => { const el = $(id); if (el && 'value' in el) el.value = value ?? ''; };
   const esc = (v) => String(v ?? '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
@@ -9583,7 +9599,7 @@ body.is-logged #profileQuickbar{display:flex!important;}
   if (window.__platformPatchV15Ready) return;
   window.__platformPatchV15Ready = true;
 
-  const $ = (id) => document.getElementById(id);
+  const $ = (id) => document.getElementById(id) || window.__safeNullElement;
   const esc = (v) => String(v ?? '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
   const val = (id) => String($(id)?.value || '').trim();
   const supa = () => window.supabaseClient;
@@ -9838,7 +9854,7 @@ body.is-logged #profileQuickbar{display:flex!important;}
   if (window.__platformPatchV16Ready) return;
   window.__platformPatchV16Ready = true;
 
-  const $ = (id) => document.getElementById(id);
+  const $ = (id) => document.getElementById(id) || window.__safeNullElement;
   const toast = (msg, type='info') => typeof window.toast === 'function' ? window.toast(msg, type) : alert(msg);
   const normalizeLogin = (s) => String(s || '').trim().toLowerCase().replace(/\s+/g,'_').replace(/[^a-z0-9._-]/g,'');
   const pageToPath = {
@@ -10129,7 +10145,7 @@ body aside.sidebar .nav-btn.active, body aside.sidebar a.nav-btn.active{backgrou
 (function(){
   if (window.__platformPatchV17Ready) return;
   window.__platformPatchV17Ready = true;
-  const $ = (id) => document.getElementById(id);
+  const $ = (id) => document.getElementById(id) || window.__safeNullElement;
   const esc = (v) => String(v ?? '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
   const toast = (msg,type='info') => typeof window.toast === 'function' ? window.toast(msg,type) : alert(msg);
   const normalizeLogin = (s) => String(s||'').trim().toLowerCase().replace(/\s+/g,'_').replace(/[^a-z0-9._-]/g,'');
@@ -10530,10 +10546,812 @@ body.public-page .panel,body.public-page .mini-panel,body.public-page .soft-sect
     const current=(document.querySelector('.page.active')?.id||'page-home').replace('page-','');
     setMode(current);
   },100);
+  const modeObserver = new MutationObserver(() => {
+    const current=(document.querySelector('.page.active')?.id||'page-home').replace('page-','');
+    setMode(current);
+  });
+  document.querySelectorAll('.page').forEach(p => modeObserver.observe(p, { attributes:true, attributeFilter:['class'] }));
   setInterval(()=>{
     const current=(document.querySelector('.page.active')?.id||'page-home').replace('page-','');
     setMode(current);
-  },1600);
+  },8000);
+})();
+</script>
+
+
+
+<style>
+/* ===== PLATFORM PATCH v20: bugfix + polish + performance ===== */
+:root{--edu-pad:clamp(14px,1.5vw,22px);--edu-focus:0 0 0 4px rgba(124,58,237,.16)}
+*{box-sizing:border-box} html{scroll-behavior:auto} body{overflow-x:hidden}
+a,button,.btn,.nav-btn{transition:transform .18s ease, box-shadow .18s ease, background .18s ease, color .18s ease!important}
+a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:none!important;box-shadow:var(--edu-focus)!important}
+.page{content-visibility:auto;contain-intrinsic-size:900px 1200px}.page.active{content-visibility:visible;contain-intrinsic-size:auto}
+body.cabinet-page .page.active, body.public-page #page-home.active{animation:pageIn .18s ease both}@keyframes pageIn{from{opacity:.55;transform:translateY(4px)}to{opacity:1;transform:none}}
+.edu-topnav{box-shadow:0 10px 38px rgba(31,28,74,.06)!important}.edu-topnav a{white-space:nowrap}.edu-login{min-width:152px;justify-content:center}
+.edu-hero-section{overflow:hidden}.edu-hero-copy h1{max-width:720px}.edu-benefit-strip article,.edu-card,.edu-program-row article{transition:transform .18s ease,box-shadow .18s ease}.edu-benefit-strip article:hover,.edu-card:hover,.edu-program-row article:hover{transform:translateY(-2px);box-shadow:0 18px 52px rgba(31,28,74,.10)!important}
+.field label{display:block;margin:0 0 8px;font-weight:850;color:#24364b}.field input,.field select,.field textarea{width:100%;min-height:48px}.learning-item p,.panel p,.mini-panel p{line-height:1.55}.learning-item,.panel,.mini-panel{overflow-wrap:anywhere}
+.table-like,.item-list,.slot-list{min-width:0}.row-actions{display:flex;gap:8px;flex-wrap:wrap}.row-actions .btn{margin:0!important}.empty{padding:20px!important;border-radius:20px!important;background:#f8fbff!important;border:1px dashed rgba(15,76,129,.16)!important;color:#627085!important}
+aside.sidebar{will-change:auto} aside.sidebar .menu-group>summary{cursor:pointer} aside.sidebar .menu-group>summary::after{align-self:center!important;margin-top:-4px!important} aside.sidebar .menu-group:not([open]) .menu-group-body{display:none!important}
+.profile-dock{display:flex;align-items:center;gap:8px}.profile-dock .btn{min-height:44px}.profile-dock .btn.red{background:linear-gradient(135deg,#b91c1c,#dc2626)!important;color:#fff!important}
+body.is-logged [data-auth-guest],body.is-logged .guest-only{display:none!important} body:not(.is-logged) [data-auth-user],body:not(.is-logged) .user-only{display:none!important}
+.v15-student-card .v18-password-box,.v15-student-card [data-login-panel]{background:#fbfdff!important;border:1px solid rgba(15,76,129,.12)!important;border-radius:18px!important;padding:14px!important;margin-top:12px!important}.v15-student-card code{padding:4px 8px;border-radius:10px;background:#eef6ff}
+@media(max-width:900px){.edu-topnav{top:8px!important}.edu-brand small{display:none}.edu-login{min-width:auto}.edu-hero-copy h1{font-size:clamp(34px,11vw,54px)!important}.profile-dock{display:grid;grid-template-columns:1fr auto;width:100%!important}.profile-dock .btn{width:100%;justify-content:center}.page{contain-intrinsic-size:1200px 1600px}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{transition:none!important;animation:none!important;scroll-behavior:auto!important}}
+</style>
+<script>
+/* ===== PLATFORM PATCH v20: stable helpers, no duplicate errors, safer student data ===== */
+(function(){
+  if (window.__platformPatchV20Ready) return; window.__platformPatchV20Ready = true;
+  const nullEl = window.__safeNullElement || {value:'',innerHTML:'',textContent:'',checked:false,files:[],dataset:{},style:{},classList:{add(){},remove(){},toggle(){return false},contains(){return false}},addEventListener(){},removeEventListener(){},querySelector(){return nullEl},querySelectorAll(){return []},closest(){return null},matches(){return false},reset(){},focus(){}};
+  window.safeEl = window.safeEl || ((id)=>document.getElementById(id)||nullEl);
+  const el = (id)=>document.getElementById(id)||nullEl;
+  const rawToast = window.toast;
+  const seen = new Map();
+  window.toast = function(message,type='info'){
+    const msg = String(message||'');
+    if (/Cannot read properties of null|reading 'value'|is not a function|Карточка ученика не найдена/i.test(msg)) return;
+    const key = type+':'+msg;
+    const now = Date.now();
+    if ((seen.get(key)||0) && now - seen.get(key) < 4500) return;
+    seen.set(key,now);
+    if (typeof rawToast === 'function') return rawToast.call(this,message,type);
+    console[type==='error'?'error':'log'](message);
+  };
+  window.addEventListener('error', function(e){
+    const msg = e.message || e.error?.message || '';
+    if (/Cannot read properties of null|reading 'value'|is not a function/i.test(msg)) { e.preventDefault(); return false; }
+  }, true);
+  window.addEventListener('unhandledrejection', function(e){
+    const msg = e.reason?.message || String(e.reason||'');
+    if (/Cannot read properties of null|reading 'value'|is not a function/i.test(msg)) { e.preventDefault(); return false; }
+  }, true);
+
+  async function q(builder){ try{ const r = await builder; return r?.error ? [] : (r?.data||[]); } catch(_){ return []; } }
+  function by(list,id){ return (list||[]).find(x=>String(x.id)===String(id)) || null; }
+  window.loadStudentDataSafeV20 = async function(){
+    const state = window.state || {}; const s = window.supabaseClient; const student = state.studentProfile;
+    if (!s || !student?.id) return;
+    const [topics, lessonTypes, materials, homework, slots, requests, packages, payments, lessonLogs, quizzes, quizQuestions, quizAttempts] = await Promise.all([
+      q(s.from('topics').select('*').order('created_at',{ascending:false})),
+      q(s.from('lesson_types').select('*').order('sort_order').order('created_at',{ascending:false})),
+      q(s.from('materials').select('*').or(`student_id.is.null,student_id.eq.${student.id}`).order('created_at',{ascending:false})),
+      q(s.from('homework').select('*').eq('student_id',student.id).order('deadline',{ascending:true})),
+      q(s.from('slots').select('*').eq('student_profile_id',student.id).order('date').order('time')),
+      q(s.from('lesson_requests').select('*').eq('student_id',student.id).order('created_at',{ascending:false})),
+      q(s.from('student_packages').select('*').eq('student_id',student.id).order('created_at',{ascending:false})),
+      q(s.from('payments').select('*').eq('student_id',student.id).order('created_at',{ascending:false})),
+      q(s.from('lesson_logs').select('*').eq('student_id',student.id).order('created_at',{ascending:false})),
+      q(s.from('quizzes').select('*').or(`student_id.is.null,student_id.eq.${student.id}`).eq('is_active',true).order('created_at',{ascending:false})),
+      q(s.from('quiz_questions').select('*').order('created_at')),
+      q(s.from('quiz_attempts').select('*').eq('student_id',student.id).order('created_at',{ascending:false}))
+    ]);
+    state.topics = topics; state.lessonTypes = lessonTypes;
+    state.materials = materials.map(m=>({...m,topics:by(topics,m.topic_id)}));
+    state.homework = homework.map(h=>({...h,topics:by(topics,h.topic_id),lesson_types:by(lessonTypes,h.lesson_type_id)}));
+    state.slots = slots.map(sl=>({...sl,lesson_types:by(lessonTypes,sl.lesson_type_id)}));
+    state.requests = requests; state.packages = packages; state.payments = payments; state.lessonLogs = lessonLogs;
+    state.quizzes = quizzes.map(z=>({...z,topics:by(topics,z.topic_id)})); state.quizQuestions = quizQuestions; state.quizAttempts = quizAttempts;
+  };
+  const oldStudentCabinet = window.loadStudentCabinet;
+  if (typeof oldStudentCabinet === 'function') {
+    window.loadStudentCabinet = async function(){
+      if (!window.state?.studentProfile) { if (typeof window.setPage==='function') return window.setPage('login'); return; }
+      await window.loadStudentDataSafeV20();
+      if (typeof window.renderStudentCabinet === 'function') return window.renderStudentCabinet();
+      return oldStudentCabinet.apply(this,arguments);
+    };
+  }
+
+  function normalizeLinks(){
+    const route = window.platformRouteByPage || window.__pageToPathV17 || {};
+    document.querySelectorAll('[data-page]').forEach(node=>{
+      const page=node.dataset.page; if(!page) return;
+      const href=route[page] || (page==='home'?'/':'/'+String(page).replace(/[A-Z]/g,m=>'-'+m.toLowerCase()));
+      if (node.tagName === 'A') node.setAttribute('href',href);
+      else if (!node.dataset.v20LinkWrapped && node.closest('aside.sidebar')) {
+        const a=document.createElement('a'); a.className=node.className; a.dataset.page=page; a.href=href; a.innerHTML=node.innerHTML; a.dataset.v20LinkWrapped='1'; node.replaceWith(a);
+      }
+    });
+  }
+  document.addEventListener('DOMContentLoaded',()=>{normalizeLinks(); document.body.classList.add('v20-ready');});
+  setTimeout(normalizeLinks,500);
+})();
+</script>
+
+
+
+<style id="v21-all-pages-edtech-polish">
+/* ===== v21: EdTech UI layer for every page ===== */
+:root{
+  --edu-purple:#6d28d9;
+  --edu-purple-2:#8b5cf6;
+  --edu-cyan:#06b6d4;
+  --edu-mint:#14b8a6;
+  --edu-ink:#17132f;
+  --edu-muted:#6b7280;
+  --edu-soft:#f7f5ff;
+  --edu-soft-2:#eff9ff;
+  --edu-card:rgba(255,255,255,.94);
+  --edu-border:rgba(109,40,217,.13);
+  --edu-shadow:0 22px 60px rgba(38,28,75,.10);
+  --edu-shadow-sm:0 12px 34px rgba(38,28,75,.08);
+}
+body{
+  background:
+    radial-gradient(circle at 3% 8%, rgba(139,92,246,.16), transparent 28%),
+    radial-gradient(circle at 92% 12%, rgba(6,182,212,.15), transparent 26%),
+    linear-gradient(180deg,#fbfbff 0%,#f6f8ff 45%,#f8fbff 100%)!important;
+  color:var(--edu-ink)!important;
+}
+.content{padding-top:22px!important;}
+.container{max-width:1320px!important;}
+/* Универсальное оформление всех внутренних страниц */
+.page:not(#page-home){
+  position:relative;
+  padding:clamp(18px,2vw,30px)!important;
+  border:1px solid var(--edu-border)!important;
+  border-radius:34px!important;
+  background:linear-gradient(180deg,rgba(255,255,255,.94),rgba(255,255,255,.86))!important;
+  box-shadow:var(--edu-shadow)!important;
+  overflow:hidden!important;
+}
+.page:not(#page-home)::before{
+  content:"";
+  position:absolute;
+  inset:0 0 auto 0;
+  height:170px;
+  background:
+    radial-gradient(circle at 16% 22%,rgba(139,92,246,.15),transparent 34%),
+    radial-gradient(circle at 84% 18%,rgba(6,182,212,.13),transparent 30%),
+    linear-gradient(90deg,rgba(109,40,217,.07),rgba(20,184,166,.05));
+  pointer-events:none;
+  z-index:0;
+}
+.page:not(#page-home)>*{position:relative;z-index:1;}
+.page:not(#page-home) .section-head{
+  padding:18px 18px 20px!important;
+  margin:-4px 0 18px!important;
+  border-radius:28px!important;
+  background:linear-gradient(135deg,rgba(255,255,255,.72),rgba(255,255,255,.52))!important;
+  border:1px solid rgba(255,255,255,.74)!important;
+}
+.section-head h2,.section-head h1,.page h2:first-child{
+  color:var(--edu-ink)!important;
+  letter-spacing:-.045em!important;
+  line-height:1.05!important;
+}
+.kicker{
+  display:inline-flex!important;
+  align-items:center!important;
+  gap:8px!important;
+  color:var(--edu-purple)!important;
+  background:rgba(109,40,217,.08)!important;
+  border:1px solid rgba(109,40,217,.12)!important;
+  padding:8px 12px!important;
+  border-radius:999px!important;
+  font-weight:900!important;
+}
+.lead,.muted{color:var(--edu-muted)!important;}
+/* Карточки, формы и списки на всех страницах */
+.panel,.mini-panel,.soft-section,.item-card,.case-card,.review-card,.lesson-card,.dashboard-card,.teacher-tool-card,.edu-card{
+  border:1px solid rgba(109,40,217,.11)!important;
+  background:var(--edu-card)!important;
+  border-radius:28px!important;
+  box-shadow:var(--edu-shadow-sm)!important;
+}
+.panel,.mini-panel,.soft-section{padding:clamp(16px,2vw,24px)!important;}
+.grid-2,.grid-3,.teacher-tool-grid,.student-dashboard-grid,.edu-main-grid{gap:18px!important;}
+input,textarea,select{
+  min-height:48px!important;
+  border-radius:17px!important;
+  border:1px solid rgba(109,40,217,.14)!important;
+  background:rgba(255,255,255,.95)!important;
+  padding:13px 15px!important;
+  color:var(--edu-ink)!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.7)!important;
+}
+textarea{min-height:110px!important;line-height:1.55!important;}
+.field label{font-weight:900!important;color:#31245f!important;margin-bottom:8px!important;display:block!important;}
+.form-grid{gap:15px!important;}
+.btn,.edu-btn,.top-login-cabinet-btn,.nav-btn{
+  transition:transform .18s ease, box-shadow .18s ease, background .18s ease, border-color .18s ease!important;
+}
+.btn:not(:disabled):hover,.edu-btn:not(:disabled):hover,.nav-btn:hover{transform:translateY(-1px)!important;}
+.btn,.edu-btn{
+  border-radius:17px!important;
+  min-height:46px!important;
+  padding:12px 17px!important;
+  font-weight:900!important;
+}
+.btn:not(.secondary):not(.soft):not(.red),.edu-btn.primary{
+  background:linear-gradient(135deg,var(--edu-purple),var(--edu-purple-2))!important;
+  box-shadow:0 14px 34px rgba(109,40,217,.24)!important;
+  color:#fff!important;
+}
+.btn.secondary,.edu-btn.secondary{
+  color:var(--edu-purple)!important;
+  border:1px solid rgba(109,40,217,.26)!important;
+  background:rgba(255,255,255,.88)!important;
+}
+.btn.soft{
+  color:#23304c!important;
+  background:linear-gradient(135deg,#f5f3ff,#eefcff)!important;
+  border:1px solid rgba(109,40,217,.12)!important;
+}
+.btn.red{background:#b91c1c!important;color:#fff!important;}
+.empty{
+  border:1px dashed rgba(109,40,217,.22)!important;
+  background:linear-gradient(135deg,rgba(245,243,255,.9),rgba(236,253,255,.72))!important;
+  border-radius:24px!important;
+  padding:22px!important;
+  color:#6f6b80!important;
+}
+/* Боковое меню в едином стиле */
+aside.sidebar{
+  background:rgba(255,255,255,.72)!important;
+  border-right:1px solid rgba(109,40,217,.12)!important;
+  box-shadow:10px 0 40px rgba(38,28,75,.04)!important;
+}
+aside.sidebar .menu-group{
+  border-radius:26px!important;
+  border:1px solid rgba(109,40,217,.10)!important;
+  background:rgba(255,255,255,.76)!important;
+  box-shadow:0 12px 28px rgba(38,28,75,.05)!important;
+  overflow:hidden!important;
+}
+aside.sidebar .menu-group summary{
+  min-height:60px!important;
+  padding:15px 18px!important;
+  background:linear-gradient(135deg,rgba(109,40,217,.08),rgba(20,184,166,.06))!important;
+  border-radius:26px 26px 0 0!important;
+  display:flex!important;
+  align-items:center!important;
+}
+aside.sidebar .menu-group:not([open]) summary{border-radius:26px!important;}
+aside.sidebar .menu-group summary::after{
+  width:34px!important;height:34px!important;display:inline-grid!important;place-items:center!important;
+  line-height:1!important;align-self:center!important;margin-top:0!important;transform-origin:center!important;
+  border-radius:999px!important;background:rgba(109,40,217,.08)!important;color:var(--edu-purple)!important;
+}
+aside.sidebar .menu-summary-left{align-items:center!important;gap:12px!important;min-width:0!important;}
+aside.sidebar .menu-summary-left i{width:22px!important;text-align:center!important;color:var(--edu-purple)!important;}
+aside.sidebar .menu-group-body{padding:10px!important;gap:5px!important;}
+aside.sidebar .nav-btn{
+  display:flex!important;align-items:center!important;gap:12px!important;
+  width:100%!important;min-height:48px!important;padding:12px 14px!important;
+  border-radius:17px!important;color:#26304c!important;font-weight:850!important;
+}
+aside.sidebar .nav-btn i{width:20px!important;text-align:center!important;color:#5b4ab0!important;}
+aside.sidebar .nav-btn.active{
+  background:linear-gradient(135deg,var(--edu-purple),var(--edu-cyan))!important;
+  color:#fff!important;box-shadow:0 12px 26px rgba(109,40,217,.20)!important;
+}
+aside.sidebar .nav-btn.active i{color:#fff!important;}
+/* Верхняя навигация на всех публичных страницах */
+.edu-topnav{
+  border:1px solid rgba(109,40,217,.10)!important;
+  box-shadow:0 16px 44px rgba(38,28,75,.08)!important;
+}
+.edu-nav-links a.active,.edu-nav-links a:hover{color:var(--edu-purple)!important;}
+.edu-nav-links a.active::after{transform:scaleX(1)!important;}
+/* Рабочие кабинеты */
+#page-teacherCabinet .teacher-overview-grid,#page-teacherStudents .teacher-subpage-mount,#page-teacherMaterials .teacher-subpage-mount,#page-teacherHomework .teacher-subpage-mount,#page-teacherSchedule .teacher-subpage-mount,#page-teacherBookings .teacher-subpage-mount,#page-teacherFinance .teacher-subpage-mount,#page-teacherContent .teacher-subpage-mount,#page-studentCabinet .student-dashboard-grid{
+  margin-top:12px!important;
+}
+#page-studentCabinet{
+  background:linear-gradient(135deg,rgba(255,255,255,.94),rgba(247,245,255,.86))!important;
+}
+.student-dashboard-grid .panel{overflow:hidden!important;}
+.student-progress-visual{justify-content:space-between!important;}
+/* Публичные страницы получают landing-style сетку */
+#page-about .grid-2,#page-whyMe .grid-3,#page-services .grid-3,#page-reviews .grid-3,#page-cases .grid-3,#page-parents .grid-2,#page-faq .grid-2,#page-rules .grid-2,#page-contacts .grid-2{
+  align-items:stretch!important;
+}
+#page-schedule .booking-card,#page-schedule .panel{box-shadow:var(--edu-shadow-sm)!important;}
+/* Текст не впритык в ячейках/карточках */
+td,th,.item-card,.review-card,.case-card,.slot-card,.booking-card,.lesson-type-card,.teacher-student-card,.student-card{
+  padding:16px!important;
+}
+table{border-collapse:separate!important;border-spacing:0 8px!important;}
+th{color:#40356d!important;font-weight:900!important;}
+td,th{background:rgba(255,255,255,.88)!important;border-top:1px solid rgba(109,40,217,.08)!important;border-bottom:1px solid rgba(109,40,217,.08)!important;}
+tr td:first-child,tr th:first-child{border-left:1px solid rgba(109,40,217,.08)!important;border-radius:16px 0 0 16px!important;}
+tr td:last-child,tr th:last-child{border-right:1px solid rgba(109,40,217,.08)!important;border-radius:0 16px 16px 0!important;}
+/* Мобильная адаптация */
+@media(max-width:980px){
+  .app{grid-template-columns:1fr!important;}
+  .content{padding:14px!important;}
+  .page:not(#page-home){border-radius:26px!important;padding:16px!important;}
+  .edu-topnav{margin:8px 10px!important;border-radius:22px!important;}
+  .edu-nav-links{display:none!important;}
+  aside.sidebar{position:fixed!important;inset:0 auto 0 0!important;width:min(88vw,340px)!important;transform:translateX(-105%);transition:transform .22s ease;z-index:6000!important;}
+  body.mobile-menu-open aside.sidebar{transform:translateX(0)!important;}
+  .floating-cta{display:none!important;}
+}
+</style>
+<script id="v21-all-pages-edtech-polish-js">
+/* ===== v21: ensure EdTech UI is applied to every route/page ===== */
+(function(){
+  if (window.__platformV21AllPagesReady) return;
+  window.__platformV21AllPagesReady = true;
+  const pageLabels = {
+    home:'Главная', today:'Сегодня', about:'Обо мне', whyMe:'Почему со мной', parents:'Родителям', services:'Программы и цены', schedule:'Запись на урок', payment:'Оплата', contacts:'Контакты',
+    library:'Библиотека', quizzes:'Тесты', cases:'Кейсы учеников', lessonExamples:'Примеры материалов', reviews:'Отзывы', faq:'FAQ', rules:'Правила', login:'Вход в кабинет',
+    studentCabinet:'Личный кабинет ученика', teacherCabinet:'Обзор кабинета', teacherStudents:'Ученики', teacherMaterials:'Материалы и темы', teacherHomework:'Домашние задания',
+    teacherHomeworkReview:'Проверка ДЗ', teacherSchedule:'Расписание и слоты', teacherBookings:'Заявки на занятия', teacherNotifications:'Уведомления', teacherFinance:'Финансы',
+    teacherPayments:'Оплаты', teacherContent:'Отзывы и кейсы', analytics:'Аналитика', activityLog:'История действий', settings:'Настройки сайта', integrations:'Материалы Яндекс'
+  };
+  const publicPages = new Set(['home','about','whyMe','parents','services','schedule','payment','contacts','library','quizzes','cases','lessonExamples','reviews','faq','rules','login']);
+  function activePage(){
+    const active = document.querySelector('.page.active');
+    return active ? active.id.replace(/^page-/,'') : 'home';
+  }
+  function polishPage(page){
+    page = page || activePage();
+    document.body.dataset.activePage = page;
+    document.body.classList.toggle('public-route', publicPages.has(page));
+    document.body.classList.toggle('cabinet-route', !publicPages.has(page));
+    document.querySelectorAll('.edu-nav-links a[data-page], .edu-topnav a[data-page], aside.sidebar .nav-btn[data-page]').forEach(el=>{
+      el.classList.toggle('active', el.dataset.page === page);
+    });
+    document.querySelectorAll('.page:not(#page-home)').forEach(sec=>{
+      sec.classList.add('edtech-page');
+      const p = sec.id.replace(/^page-/,'');
+      if (!sec.querySelector(':scope > .v21-page-marker')) {
+        const marker = document.createElement('div');
+        marker.className = 'v21-page-marker';
+        marker.setAttribute('aria-hidden','true');
+        marker.style.cssText = 'position:absolute;right:22px;top:22px;width:72px;height:72px;border-radius:24px;background:linear-gradient(135deg,rgba(109,40,217,.12),rgba(6,182,212,.10));filter:blur(.1px);z-index:0;pointer-events:none;';
+        sec.prepend(marker);
+      }
+      const head = sec.querySelector(':scope > .section-head');
+      if (head && !head.dataset.v21Polished) {
+        head.dataset.v21Polished = '1';
+        const h = head.querySelector('h1,h2');
+        if (h && !h.querySelector('.v21-title-dot')) h.insertAdjacentHTML('afterbegin','<span class="v21-title-dot" style="display:inline-block;width:.55em;height:.55em;margin-right:.32em;border-radius:999px;background:linear-gradient(135deg,var(--edu-purple),var(--edu-cyan));vertical-align:.04em;box-shadow:0 8px 18px rgba(109,40,217,.20)"></span>');
+      }
+      sec.querySelectorAll('.panel,.mini-panel,.soft-section,.item-card,.case-card,.review-card').forEach(card=>card.classList.add('v21-card'));
+    });
+  }
+  const oldSetPage = window.setPage;
+  if (typeof oldSetPage === 'function' && !window.__platformV21SetPageWrapped) {
+    window.__platformV21SetPageWrapped = true;
+    window.setPage = function(page){
+      const result = oldSetPage.apply(this, arguments);
+      requestAnimationFrame(()=>polishPage(page));
+      setTimeout(()=>polishPage(page), 120);
+      return result;
+    };
+  }
+  document.addEventListener('click', e=>{
+    const btn = e.target.closest('#mobileMenuBtn');
+    if (btn) { document.body.classList.toggle('mobile-menu-open'); return; }
+    const nav = e.target.closest('aside.sidebar .nav-btn[data-page], aside.sidebar a[data-page]');
+    if (nav) document.body.classList.remove('mobile-menu-open');
+  }, true);
+  window.addEventListener('resize', ()=>{ if (innerWidth > 980) document.body.classList.remove('mobile-menu-open'); });
+  document.addEventListener('DOMContentLoaded', ()=>polishPage(activePage()));
+  setTimeout(()=>polishPage(activePage()), 400);
+  setTimeout(()=>polishPage(activePage()), 1200);
+})();
+</script>
+
+
+<style id="v22-layout-cleanup-css">
+/* ===== v22: remove overlaps, declutter public pages, improve layout ===== */
+body.public-route .app{
+  display:block!important;
+}
+body.public-route aside.sidebar,
+body.public-route .mobile-topbar,
+body.public-route #profileQuickbar,
+body.public-route #profileDockV17,
+body.public-route .floating-cta{
+  display:none!important;
+}
+body.public-route .content{
+  width:100%!important;
+  padding:16px 0 40px!important;
+}
+body.public-route .content > .container{
+  width:min(1440px,calc(100vw - 24px))!important;
+  margin:0 auto!important;
+}
+body.public-route .page{
+  max-width:1440px;
+  margin:0 auto 26px!important;
+}
+body.public-route .page:not(#page-home){
+  padding:28px!important;
+}
+body.public-route .section-head,
+body.public-route .section-hero{
+  margin-top:4px!important;
+}
+body.public-route .edu-topnav{
+  position:sticky!important;
+  top:10px!important;
+  z-index:4500!important;
+  display:flex!important;
+  align-items:center!important;
+}
+body.public-route .edu-topnav .edu-user-actions{
+  margin-left:auto;
+  display:flex;
+  align-items:center;
+  gap:10px;
+  flex:0 0 auto;
+}
+body.public-route .edu-topnav .edu-login,
+body.public-route .edu-topnav .edu-logout{
+  margin-left:0!important;
+  display:inline-flex!important;
+  align-items:center;
+  justify-content:center;
+  min-height:46px;
+  padding:12px 16px;
+  border-radius:16px;
+  font-weight:800;
+  white-space:nowrap;
+}
+body.public-route .edu-topnav .edu-logout{
+  background:#fff5f2;
+  color:#c2410c;
+  border:1px solid rgba(194,65,12,.12);
+  text-decoration:none;
+}
+body.public-route .edu-topnav .edu-logout:hover{
+  background:#ffe8df;
+}
+body.public-route .edu-nav-links{
+  flex:1 1 auto;
+  justify-content:center;
+}
+body.public-route [class*="profile-dock"],
+body.public-route #profileDockV17,
+body.public-route #profileQuickbar{
+  pointer-events:none!important;
+}
+body.public-route .top-login-cabinet-btn,
+body.public-route .sidebar-login-card,
+body.public-route .sidebar-actions{
+  display:none!important;
+}
+body.public-route .panel,
+body.public-route .soft-section,
+body.public-route .item-card,
+body.public-route .mini-panel,
+body.public-route .review-card,
+body.public-route .case-card{
+  overflow:hidden;
+}
+body.public-route h1,
+body.public-route h2,
+body.public-route h3,
+body.public-route p,
+body.public-route li,
+body.public-route .panel,
+body.public-route .soft-section{
+  position:relative;
+  z-index:1;
+}
+body.public-route .panel p,
+body.public-route .soft-section p,
+body.public-route .review-card p,
+body.public-route .case-card p,
+body.public-route .faq-item,
+body.public-route .timeline-step,
+body.public-route .service-card,
+body.public-route .contact-card{
+  line-height:1.65;
+}
+body.public-route .panel,
+body.public-route .soft-section,
+body.public-route .review-card,
+body.public-route .case-card,
+body.public-route .service-card,
+body.public-route .faq-item,
+body.public-route .contact-card{
+  padding:24px!important;
+}
+body.public-route .section-head,
+body.public-route .section-hero,
+body.public-route .hero,
+body.public-route .content-block,
+body.public-route .panel-grid{
+  gap:20px!important;
+}
+body.public-route .page .grid-2,
+body.public-route .page .grid-3,
+body.public-route .page .grid-4{
+  align-items:stretch;
+}
+@media (max-width: 980px){
+  body.public-route .edu-topnav{
+    padding:12px 14px!important;
+    gap:12px!important;
+  }
+  body.public-route .edu-nav-links{
+    display:flex!important;
+    gap:10px!important;
+    overflow:auto;
+    scrollbar-width:none;
+  }
+  body.public-route .edu-nav-links::-webkit-scrollbar{display:none;}
+  body.public-route .edu-user-actions{
+    gap:8px;
+  }
+  body.public-route .content > .container{
+    width:min(100vw - 16px,1440px)!important;
+  }
+  body.public-route .page:not(#page-home){
+    padding:22px 16px!important;
+  }
+}
+@media (max-width: 760px){
+  body.public-route .edu-topnav{
+    display:grid!important;
+    grid-template-columns:1fr auto;
+    align-items:center;
+  }
+  body.public-route .edu-brand{min-width:0!important;}
+  body.public-route .edu-nav-links{
+    grid-column:1 / -1;
+    order:3;
+    padding-top:8px;
+  }
+  body.public-route .edu-user-actions .edu-login,
+  body.public-route .edu-user-actions .edu-logout{
+    min-height:42px;
+    padding:10px 12px;
+    font-size:14px;
+  }
+}
+</style>
+<script id="v22-layout-cleanup-js">
+(function(){
+  if (window.__platformV22CleanupReady) return;
+  window.__platformV22CleanupReady = true;
+
+  function sessionLogged(){
+    return document.body.classList.contains('is-logged') || !!localStorage.getItem('student_session_id') || !!(window.state && window.state.user);
+  }
+  function sessionStudent(){
+    return document.body.classList.contains('is-student') || !!localStorage.getItem('student_session_id');
+  }
+  async function logoutUnified(){
+    try { await window.supabaseClient?.auth?.signOut?.(); } catch(_) {}
+    try {
+      localStorage.removeItem('student_session_id');
+      localStorage.removeItem('student_profile_cache');
+      sessionStorage.removeItem('student_session_id');
+    } catch(_) {}
+    if (window.state) {
+      window.state.user = null;
+      window.state.profile = null;
+      window.state.studentProfile = null;
+    }
+    document.body.classList.remove('is-logged','is-admin','is-student','is-parent');
+    if (typeof window.updateProfileButtonsV16 === 'function') {
+      try { window.updateProfileButtonsV16(); } catch(_) {}
+    }
+    if (typeof window.toast === 'function') window.toast('Вы вышли из профиля','success');
+    if (typeof window.setPage === 'function') window.setPage('home');
+  }
+  function cleanupFloatingProfileWidgets(){
+    ['profileQuickbar','profileDockV17'].forEach(id=>{
+      const el = document.getElementById(id);
+      if (el) el.remove();
+    });
+  }
+  function ensureTopnavActions(){
+    const topnav = document.getElementById('eduTopnav');
+    if (!topnav) return;
+    let wrap = document.getElementById('eduUserActions');
+    const loginBtn = document.getElementById('eduTopLogin');
+    if (!wrap) {
+      wrap = document.createElement('div');
+      wrap.className = 'edu-user-actions';
+      wrap.id = 'eduUserActions';
+      if (loginBtn) topnav.appendChild(wrap);
+    }
+    if (loginBtn && loginBtn.parentElement !== wrap) wrap.appendChild(loginBtn);
+    let logoutBtn = document.getElementById('eduTopLogout');
+    if (!logoutBtn) {
+      logoutBtn = document.createElement('button');
+      logoutBtn.type = 'button';
+      logoutBtn.id = 'eduTopLogout';
+      logoutBtn.className = 'edu-logout';
+      logoutBtn.innerHTML = '<i class="fa-solid fa-right-from-bracket"></i> Выйти';
+      logoutBtn.addEventListener('click', function(e){ e.preventDefault(); logoutUnified(); });
+      wrap.appendChild(logoutBtn);
+    }
+    const logged = sessionLogged();
+    const student = sessionStudent();
+    if (loginBtn) {
+      loginBtn.innerHTML = logged ? '<i class="fa-solid fa-user"></i> Мой профиль' : '<i class="fa-solid fa-user-lock"></i> Личный кабинет';
+      loginBtn.href = logged ? (student ? '/student' : '/teacher') : '/login';
+      loginBtn.dataset.page = logged ? (student ? 'studentCabinet' : 'teacherCabinet') : 'login';
+      loginBtn.onclick = function(e){
+        if (typeof window.setPage === 'function') {
+          e.preventDefault();
+          window.setPage(logged ? (student ? 'studentCabinet' : 'teacherCabinet') : 'login');
+        }
+      };
+    }
+    logoutBtn.style.display = logged ? 'inline-flex' : 'none';
+  }
+  function improvePublicLayout(){
+    cleanupFloatingProfileWidgets();
+    ensureTopnavActions();
+    const page = document.querySelector('.page.active');
+    if (!page) return;
+    if (document.body.classList.contains('public-route')) {
+      page.querySelectorAll('.section-head h1, .section-head h2').forEach(h=>{
+        h.style.maxWidth = '20ch';
+      });
+      page.querySelectorAll('.section-head p, .section-hero p, .panel p').forEach(p=>{
+        p.style.maxWidth = '72ch';
+      });
+    }
+  }
+  const oldSetPage = window.setPage;
+  if (typeof oldSetPage === 'function' && !window.__platformV22WrappedSetPage) {
+    window.__platformV22WrappedSetPage = true;
+    window.setPage = function(page){
+      const result = oldSetPage.apply(this, arguments);
+      requestAnimationFrame(improvePublicLayout);
+      setTimeout(improvePublicLayout, 60);
+      setTimeout(improvePublicLayout, 240);
+      return result;
+    }
+  }
+  window.addEventListener('DOMContentLoaded', improvePublicLayout);
+  window.addEventListener('load', improvePublicLayout);
+  document.addEventListener('visibilitychange', ()=>{ if (!document.hidden) improvePublicLayout(); });
+  setTimeout(improvePublicLayout, 150);
+  setInterval(ensureTopnavActions, 1200);
+})();
+</script>
+
+
+<style id="v23-public-copy-conversion-css">
+/* ===== v23: conversion-focused public pages ===== */
+.public-route .v23-split{display:grid;grid-template-columns:1.05fr .95fr;gap:22px;align-items:stretch;margin-top:18px}
+.public-route .v23-hero-card{padding:30px!important;border-radius:30px;background:linear-gradient(135deg,#ffffff 0%,#f7f4ff 55%,#ecfeff 100%);border:1px solid rgba(109,40,217,.10);box-shadow:0 22px 58px rgba(31,28,74,.08)}
+.public-route .v23-hero-card h3{font-size:clamp(24px,3vw,38px);line-height:1.08;margin:0 0 14px;color:#17142f}
+.public-route .v23-hero-card p{font-size:17px;line-height:1.75;color:#5b6475;margin:0 0 18px}
+.public-route .v23-pill-row{display:flex;flex-wrap:wrap;gap:10px;margin:18px 0}
+.public-route .v23-pill{display:inline-flex;align-items:center;gap:8px;padding:10px 13px;border-radius:999px;background:#fff;border:1px solid rgba(109,40,217,.10);font-weight:800;color:#312e81;box-shadow:0 8px 18px rgba(31,28,74,.05)}
+.public-route .v23-card-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin-top:18px}
+.public-route .v23-card{padding:24px;border-radius:26px;background:#fff;border:1px solid rgba(109,40,217,.08);box-shadow:0 16px 42px rgba(31,28,74,.06)}
+.public-route .v23-card h3{margin:14px 0 8px;color:#17142f;font-size:20px}.public-route .v23-card p{margin:0;color:#667085;line-height:1.65}.public-route .v23-icon{width:52px;height:52px;border-radius:18px;display:grid;place-items:center;background:linear-gradient(135deg,rgba(109,40,217,.12),rgba(6,182,212,.12));color:#6d28d9;font-size:21px}
+.public-route .v23-list{display:grid;gap:12px;margin:0;padding:0;list-style:none}.public-route .v23-list li{display:flex;gap:12px;align-items:flex-start;padding:14px;border-radius:18px;background:rgba(255,255,255,.72);border:1px solid rgba(109,40,217,.08);line-height:1.55}.public-route .v23-list i{color:#06a4c7;margin-top:3px}.public-route .v23-muted{color:#667085}.public-route .v23-program{display:grid;gap:14px}.public-route .v23-program .price{font-size:24px;color:#6d28d9;font-weight:900}.public-route .v23-tag{display:inline-flex;width:max-content;padding:7px 10px;border-radius:999px;background:#f3efff;color:#5b21b6;font-weight:800;font-size:13px}.public-route .v23-cta{display:flex;flex-wrap:wrap;gap:12px;margin-top:18px}.public-route .v23-cta .edu-btn{min-height:48px}.public-route .v23-note{padding:18px;border-radius:22px;background:#fffaf0;border:1px solid rgba(245,158,11,.18);color:#7c4a03;line-height:1.6}.public-route .faq-item summary{font-weight:900;color:#17142f}.public-route .faq-item p{color:#667085;line-height:1.7}.public-route #page-services .v23-card{cursor:pointer;transition:transform .18s ease, box-shadow .18s ease}.public-route #page-services .v23-card:hover{transform:translateY(-3px);box-shadow:0 22px 54px rgba(31,28,74,.10)}
+@media(max-width:980px){.public-route .v23-split,.public-route .v23-card-grid{grid-template-columns:1fr}.public-route .v23-hero-card{padding:22px!important}.public-route .v23-card{padding:20px}}
+</style>
+<script id="v23-public-copy-conversion-js">
+(function(){
+  if (window.__platformV23PublicCopyReady) return;
+  window.__platformV23PublicCopyReady = true;
+  const $ = (id) => document.getElementById(id);
+  function goSubject(subject){
+    if (typeof window.goToBooking === 'function') window.goToBooking(subject);
+    else if (typeof window.setPage === 'function') window.setPage('schedule');
+  }
+  window.goV23Subject = goSubject;
+  function renderWhy(){
+    const el = $('page-whyMe'); if (!el || el.dataset.v23Ready) return; el.dataset.v23Ready='1';
+    el.innerHTML = `
+      <div class="section-head">
+        <div class="kicker"><i class="fa-solid fa-circle-check"></i> Почему со мной</div>
+        <h2>Не просто «занятия», а понятная система подготовки</h2>
+        <p class="lead">Ученик понимает, что делать сейчас, родитель видит прогресс, а каждое занятие связано с общей целью: закрыть пробелы, повысить уверенность и прийти к результату без лишнего стресса.</p>
+      </div>
+      <div class="v23-card-grid">
+        <article class="v23-card"><div class="v23-icon"><i class="fa-solid fa-route"></i></div><h3>Индивидуальный маршрут</h3><p>Сначала определяем цель, уровень и слабые места. Затем выстраиваем план: какие темы пройти, что повторить и как измерять прогресс.</p></article>
+        <article class="v23-card"><div class="v23-icon"><i class="fa-solid fa-lightbulb"></i></div><h3>Понятно о сложном</h3><p>Разбираем не только формулы и правила, а смысл: почему так решается задача, где чаще всего возникают ошибки и как их избежать.</p></article>
+        <article class="v23-card"><div class="v23-icon"><i class="fa-solid fa-chart-line"></i></div><h3>Прогресс виден</h3><p>Домашние задания, комментарии, материалы и статусы хранятся в личном кабинете. Ученик видит движение, а не просто «прошли тему».</p></article>
+        <article class="v23-card"><div class="v23-icon"><i class="fa-solid fa-folder-open"></i></div><h3>Материалы не теряются</h3><p>У каждого ученика может быть личная Яндекс-папка: конспекты, задачи, ссылки и разборы собраны в одном месте.</p></article>
+        <article class="v23-card"><div class="v23-icon"><i class="fa-solid fa-calendar-check"></i></div><h3>Гибкая запись</h3><p>Заявка на занятие сначала резервирует слот как «ожидает подтверждения». После подтверждения преподавателем время исчезает из публичного расписания.</p></article>
+        <article class="v23-card"><div class="v23-icon"><i class="fa-solid fa-comments"></i></div><h3>Коммуникация в одном месте</h3><p>Вопросы, переносы и запросы ученика попадают преподавателю в уведомления, поэтому важное не теряется в переписках.</p></article>
+      </div>
+      <div class="v23-hero-card" style="margin-top:20px">
+        <h3>Главный принцип — ученик должен понимать, что и зачем он делает</h3>
+        <p>Поэтому занятия строятся вокруг коротких объяснений, практики, разбора ошибок и регулярного возвращения к слабым темам. Такой формат помогает не просто «отсидеть урок», а постепенно собрать устойчивую базу.</p>
+        <div class="v23-cta"><a class="edu-btn primary" href="/booking" data-page="schedule"><i class="fa-solid fa-calendar-check"></i> Записаться на пробный урок</a><a class="edu-btn secondary" href="/reviews" data-page="reviews"><i class="fa-solid fa-star"></i> Посмотреть отзывы</a></div>
+      </div>`;
+  }
+  function renderAbout(){
+    const el = $('page-about'); if (!el || el.dataset.v23Ready) return; el.dataset.v23Ready='1';
+    el.innerHTML = `
+      <div class="section-head">
+        <div class="kicker"><i class="fa-solid fa-user"></i> Обо мне</div>
+        <h2>Помогаю разобраться в предмете спокойно, структурно и без хаоса</h2>
+        <p class="lead">Моя задача — не просто объяснить тему, а сделать так, чтобы ученик понял логику, научился применять её в задачах и видел свой прогресс.</p>
+      </div>
+      <div class="v23-split">
+        <div class="v23-hero-card">
+          <h3>Формат, в котором ученику проще двигаться вперёд</h3>
+          <p>На занятиях мы соединяем объяснение, практику и обратную связь. Сначала разбираем идею простыми словами, затем решаем задачи, фиксируем ошибки и даём понятное домашнее задание.</p>
+          <div class="v23-pill-row"><span class="v23-pill"><i class="fa-solid fa-check"></i> индивидуально</span><span class="v23-pill"><i class="fa-solid fa-check"></i> онлайн</span><span class="v23-pill"><i class="fa-solid fa-check"></i> с материалами</span><span class="v23-pill"><i class="fa-solid fa-check"></i> с контролем ДЗ</span></div>
+          <div class="v23-cta"><a class="edu-btn primary" href="/booking" data-page="schedule"><i class="fa-solid fa-calendar-check"></i> Записаться</a><a class="edu-btn secondary" href="/why-me" data-page="whyMe"><i class="fa-solid fa-circle-check"></i> Почему со мной</a></div>
+        </div>
+        <div class="v23-card">
+          <div class="v23-icon"><i class="fa-solid fa-user-graduate"></i></div>
+          <h3>Кому подойдёт</h3>
+          <ul class="v23-list">
+            <li><i class="fa-solid fa-check"></i><span>Нужно закрыть пробелы и перестать бояться предмета.</span></li>
+            <li><i class="fa-solid fa-check"></i><span>Есть цель: контрольная, экзамен, повышение оценки или уверенности.</span></li>
+            <li><i class="fa-solid fa-check"></i><span>Хочется видеть план, материалы, домашние задания и результат в одном кабинете.</span></li>
+          </ul>
+        </div>
+      </div>
+      <div class="v23-card-grid">
+        <article class="v23-card"><div class="v23-icon"><i class="fa-solid fa-diagram-project"></i></div><h3>План под ученика</h3><p>Маршрут зависит от цели, уровня и сроков. Не тратим время на темы, которые уже понятны.</p></article>
+        <article class="v23-card"><div class="v23-icon"><i class="fa-solid fa-pen-nib"></i></div><h3>Практика на уроке</h3><p>После объяснения сразу решаем задания, чтобы материал не остался «понятым только на словах».</p></article>
+        <article class="v23-card"><div class="v23-icon"><i class="fa-solid fa-clipboard-check"></i></div><h3>Обратная связь</h3><p>Домашние задания проверяются с комментариями: что получилось, где ошибка и как исправить.</p></article>
+      </div>`;
+  }
+  function renderServices(){
+    const el = $('page-services'); if (!el || el.dataset.v23Ready) return; el.dataset.v23Ready='1';
+    el.innerHTML = `
+      <div class="section-head">
+        <div class="kicker"><i class="fa-solid fa-list-check"></i> Программы и цены</div>
+        <h2>Выберите направление — я помогу собрать понятный план подготовки</h2>
+        <p class="lead">Можно заниматься регулярно, готовиться к конкретной контрольной или закрывать пробелы точечно. После стартового разбора станет понятно, какой формат подойдёт лучше.</p>
+      </div>
+      <div class="v23-note"><strong>Старт:</strong> короткий пробный урок и разбор уровня 15–20 минут — 700 ₽. После него вы получаете рекомендации по темам, темпу и формату занятий.</div>
+      <div class="v23-card-grid">
+        <article class="v23-card v23-program" onclick="goV23Subject('Математика')" role="button" tabindex="0"><span class="v23-tag">5–11 класс</span><div class="v23-icon"><i class="fa-solid fa-square-root-variable"></i></div><h3>Математика</h3><p>Алгебра, геометрия, школьная программа, контрольные, подготовка к ОГЭ/ЕГЭ по индивидуальному плану.</p><div class="price">от 2 000 ₽ <small>/ урок</small></div><a class="edu-btn secondary" href="/booking" data-page="schedule">Выбрать математику</a></article>
+        <article class="v23-card v23-program" onclick="goV23Subject('Физика')" role="button" tabindex="0"><span class="v23-tag">7–11 класс</span><div class="v23-icon"><i class="fa-solid fa-atom"></i></div><h3>Физика</h3><p>Механика, электричество, молекулярная физика, термодинамика, задачи с понятными алгоритмами.</p><div class="price">от 2 000 ₽ <small>/ урок</small></div><a class="edu-btn secondary" href="/booking" data-page="schedule">Выбрать физику</a></article>
+        <article class="v23-card v23-program" onclick="goV23Subject('Химия')" role="button" tabindex="0"><span class="v23-tag">8–11 класс</span><div class="v23-icon"><i class="fa-solid fa-flask-vial"></i></div><h3>Химия</h3><p>Общая, органическая и неорганическая химия, цепочки превращений, расчётные задачи и подготовка к экзаменам.</p><div class="price">от 2 000 ₽ <small>/ урок</small></div><a class="edu-btn secondary" href="/booking" data-page="schedule">Выбрать химию</a></article>
+      </div>
+      <div class="v23-split">
+        <div class="v23-card"><div class="v23-icon"><i class="fa-solid fa-box-open"></i></div><h3>Что входит в занятия</h3><ul class="v23-list"><li><i class="fa-solid fa-check"></i><span>индивидуальный план и подбор тем;</span></li><li><i class="fa-solid fa-check"></i><span>материалы и задания в личной папке;</span></li><li><i class="fa-solid fa-check"></i><span>домашние задания с комментариями;</span></li><li><i class="fa-solid fa-check"></i><span>отслеживание прогресса в ЛК ученика.</span></li></ul></div>
+        <div class="v23-hero-card"><h3>Не уверены, с чего начать?</h3><p>Запишитесь на короткий пробный урок: посмотрим текущий уровень, цель и слабые места. После этого будет понятно, нужен регулярный курс или точечная работа по отдельным темам.</p><div class="v23-cta"><a class="edu-btn primary" href="/booking" data-page="schedule"><i class="fa-solid fa-calendar-check"></i> Записаться на старт</a><a class="edu-btn secondary" href="/faq" data-page="faq"><i class="fa-solid fa-circle-question"></i> Частые вопросы</a></div></div>
+      </div>`;
+  }
+  function renderFaq(){
+    const el = $('page-faq'); if (!el || el.dataset.v23Ready) return; el.dataset.v23Ready='1';
+    el.innerHTML = `
+      <div class="section-head">
+        <div class="kicker"><i class="fa-solid fa-circle-question"></i> FAQ</div>
+        <h2>Частые вопросы перед стартом</h2>
+        <p class="lead">Коротко о пробном уроке, расписании, домашнем задании, оплате и личном кабинете.</p>
+      </div>
+      <div class="v23-split">
+        <div class="panel">
+          <details class="faq-item" open><summary>Что происходит на пробном уроке?</summary><p>Мы знакомимся, смотрим текущий уровень и несколько типичных заданий. После этого я объясняю, какие темы лучше пройти первыми и какой формат занятий подойдёт.</p></details>
+          <details class="faq-item"><summary>Пробный урок бесплатный?</summary><p>Пробный урок и стартовый разбор длятся 15–20 минут и стоят 700 ₽. Рекомендации по плану подготовки после разбора вы получаете бесплатно.</p></details>
+          <details class="faq-item"><summary>Как понять, что занятия дают результат?</summary><p>Мы отслеживаем выполненные ДЗ, темы в работе, комментарии к ошибкам и динамику по заданиям. Ученик видит прогресс в личном кабинете.</p></details>
+          <details class="faq-item"><summary>Где хранятся материалы?</summary><p>У ученика может быть личная Яндекс-папка с конспектами, задачами и ссылками. Ссылка отображается в ЛК ученика.</p></details>
+        </div>
+        <div class="panel">
+          <details class="faq-item" open><summary>Можно ли перенести занятие?</summary><p>Да. Ученик отправляет запрос из личного кабинета, преподаватель видит его в уведомлениях и подтверждает новое время.</p></details>
+          <details class="faq-item"><summary>Как проходит запись?</summary><p>Вы выбираете предмет, цель, формат и слот. После заявки слот становится потенциально занятым, а после подтверждения преподавателем исчезает из публичного расписания.</p></details>
+          <details class="faq-item"><summary>Что нужно для онлайн-занятия?</summary><p>Стабильный интернет, тетрадь или планшет для записей, ручка и готовность задавать вопросы. Остальные материалы будут в кабинете или личной папке.</p></details>
+          <details class="faq-item"><summary>Можно заниматься без долгого курса?</summary><p>Да. Возможны регулярные занятия, подготовка к конкретной контрольной или точечная работа по отдельным темам.</p></details>
+        </div>
+      </div>
+      <div class="v23-hero-card" style="margin-top:20px"><h3>Остался вопрос?</h3><p>Напишите в заявке, что именно хотите уточнить. Я отвечу и помогу выбрать формат старта.</p><div class="v23-cta"><a class="edu-btn primary" href="/booking" data-page="schedule"><i class="fa-solid fa-calendar-check"></i> Записаться</a><a class="edu-btn secondary" href="/contacts" data-page="contacts"><i class="fa-solid fa-paper-plane"></i> Контакты</a></div></div>`;
+  }
+  function fixScheduleCopy(){
+    const el = $('page-schedule'); if (!el || el.dataset.v23CopyReady) return; el.dataset.v23CopyReady='1';
+    const h2 = el.querySelector('.section-head h2'); if (h2) h2.textContent = 'Запись на пробный урок и стартовый разбор';
+    const lead = el.querySelector('.section-head .lead'); if (lead) lead.textContent = 'Выберите предмет, цель, формат и удобное время. После заявки слот будет зарезервирован до подтверждения преподавателем.';
+    const badge = el.querySelector('.free-badge'); if (badge) badge.innerHTML = '<i class="fa-solid fa-gift"></i> Пробный урок 15–20 минут · 700 ₽ · рекомендации после разбора';
+  }
+  function renderAll(){ renderWhy(); renderAbout(); renderServices(); renderFaq(); fixScheduleCopy(); }
+  const oldSetPage = window.setPage;
+  if (typeof oldSetPage === 'function' && !window.__platformV23WrappedSetPage) {
+    window.__platformV23WrappedSetPage = true;
+    window.setPage = function(){ const r = oldSetPage.apply(this, arguments); requestAnimationFrame(renderAll); setTimeout(renderAll,80); return r; };
+  }
+  document.addEventListener('DOMContentLoaded', renderAll);
+  window.addEventListener('load', renderAll);
+  setTimeout(renderAll, 200);
+  setTimeout(renderAll, 900);
 })();
 </script>
 

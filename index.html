@@ -4124,12 +4124,29 @@ body.is-logged #profileQuickbar{display:flex!important;}
 </style>
 </head>
 
-<body>
+<body class="public-page landing-v19">
   <div class="mobile-topbar">
     <button class="btn small soft" id="mobileMenuBtn"><i class="fa-solid fa-bars"></i> Меню</button>
     <strong>Илья Юдин</strong>
     <button class="btn small secondary" onclick="setPage('login')"><i class="fa-solid fa-user-lock"></i> ЛК</button>
     </div>
+
+  <header class="edu-topnav" id="eduTopnav" aria-label="Главная навигация">
+    <a class="edu-brand" href="/" data-page="home" aria-label="На главную">
+      <span class="edu-logo"><i class="fa-solid fa-book-open"></i></span>
+      <span><strong>Илья Юдин</strong><small>репетитор онлайн</small></span>
+    </a>
+    <nav class="edu-nav-links">
+      <a href="/" data-page="home">Главная</a>
+      <a href="/services" data-page="services">Программы</a>
+      <a href="/about" data-page="about">Обо мне</a>
+      <a href="/why-me" data-page="whyMe">Почему со мной</a>
+      <a href="/reviews" data-page="reviews">Отзывы</a>
+      <a href="/booking" data-page="schedule">Запись</a>
+      <a href="/contacts" data-page="contacts">Контакты</a>
+    </nav>
+    <a class="edu-login" id="eduTopLogin" href="/login" data-page="login"><i class="fa-solid fa-user"></i> Личный кабинет</a>
+  </header>
 
   <div class="app">
     <aside class="sidebar" id="sidebar">
@@ -4201,64 +4218,84 @@ body.is-logged #profileQuickbar{display:flex!important;}
     <main class="content">
       <div class="container">
         <section class="page active" id="page-home">
-          <div class="hero-clean">
-            <div>
-              <div class="eyebrow"><i class="fa-solid fa-video"></i> Онлайн · индивидуально · диагностика перед стартом</div>
-              <h1>Подготовка по математике, физике и химии с понятным планом и личным кабинетом</h1>
-              <p class="lead">Помогаю закрыть пробелы, подготовиться к контрольным и экзаменам без хаоса: сначала диагностика, затем персональный маршрут, материалы в личной папке ученика и регулярный контроль прогресса.</p>
-              <div class="hero-actions">
-                <button class="btn" data-page="schedule"><i class="fa-solid fa-calendar-check"></i> Записаться на диагностику</button>
-                <button class="btn secondary" data-page="cases"><i class="fa-solid fa-trophy"></i> Посмотреть кейсы</button>
+          <div class="edu-hero-section">
+            <div class="edu-hero-copy">
+              <div class="edu-eyebrow"><i class="fa-solid fa-wand-magic-sparkles"></i> Онлайн · индивидуально · с понятной системой</div>
+              <h1>Онлайн-подготовка <span>с понятной системой</span> и реальным результатом</h1>
+              <p class="edu-lead">Индивидуальный маршрут, домашние задания с обратной связью, личный кабинет ученика и материалы в личной Яндекс-папке — всё в одном месте.</p>
+              <div class="edu-hero-actions">
+                <a class="edu-btn primary" href="/booking" data-page="schedule"><i class="fa-solid fa-calendar-check"></i> Записаться на пробный урок</a>
+                <a class="edu-btn secondary" href="/services" data-page="services"><i class="fa-solid fa-book-open"></i> Посмотреть программы</a>
               </div>
-              <div class="hero-proofline">
-                <span class="proof-pill"><i class="fa-solid fa-check"></i> Диагностика и план</span>
-                <span class="proof-pill"><i class="fa-solid fa-check"></i> Личная Яндекс-папка ученика</span>
-                <span class="proof-pill"><i class="fa-solid fa-check"></i> ДЗ, материалы и прогресс в ЛК</span>
+              <div class="edu-proofline">
+                <span><i class="fa-solid fa-shield-halved"></i><strong>7+ лет</strong><small>опыта работы</small></span>
+                <span><i class="fa-solid fa-chart-line"></i><strong>видимый прогресс</strong><small>по ДЗ и темам</small></span>
+                <span><i class="fa-solid fa-user-graduate"></i><strong>ОГЭ · ЕГЭ · школа</strong><small>под цель ученика</small></span>
               </div>
             </div>
-            <div class="hero-visual">
-              <div class="diagnostic-card">
-                <div class="big-icon"><i class="fa-solid fa-magnifying-glass-chart"></i></div>
-                <span class="free-badge"><i class="fa-solid fa-gift"></i> Бесплатный анализ результатов</span>
-                <h3>Что ученик получает после диагностики</h3>
-                <ul class="diagnostic-list">
-                  <li><i class="fa-solid fa-check"></i><span>понятную карту пробелов и сильных тем;</span></li>
-                  <li><i class="fa-solid fa-check"></i><span>план занятий на ближайшие недели;</span></li>
-                  <li><i class="fa-solid fa-check"></i><span>доступ к материалам через личную Яндекс-папку.</span></li>
-                </ul>
-                <button class="btn" data-page="schedule">Записаться на диагностику</button>
-              </div>
+            <div class="edu-hero-visual" aria-hidden="true">
+              <div class="edu-blob"></div>
+              <div class="edu-illustration-card edu-card-video"><span class="traffic"><i></i><i></i><i></i></span><div class="play"><i class="fa-solid fa-play"></i></div><div class="mini-lines"><b></b><b></b><b></b></div></div>
+              <div class="edu-illustration-card edu-card-chart"><i class="fa-solid fa-chart-simple"></i><span></span><span></span><span></span></div>
+              <div class="edu-illustration-card edu-card-checks"><b><i class="fa-solid fa-check"></i></b><b><i class="fa-solid fa-check"></i></b><b><i class="fa-solid fa-check"></i></b></div>
+              <div class="edu-student-figure"><div class="headphones"></div><div class="face"></div><div class="body"></div><div class="laptop"><i class="fa-solid fa-heart"></i></div></div>
+              <div class="edu-books"><i></i><i></i><i></i></div>
+              <div class="edu-grade">A+</div>
             </div>
           </div>
 
-          <div class="image-strip">
-            <div class="image-tile math"><h3>Математика</h3><p>логика решения, формулы, типовые ошибки</p></div>
-            <div class="image-tile physics"><h3>Физика</h3><p>смысл законов, графики, задачи с объяснением</p></div>
-            <div class="image-tile chem"><h3>Химия</h3><p>реакции, схемы, цепочки превращений</p></div>
+          <div class="edu-benefit-strip">
+            <div class="edu-strip-title"><small>Почему</small><strong>со мной</strong></div>
+            <article><span><i class="fa-solid fa-bullseye"></i></span><h3>Индивидуальный маршрут</h3><p>Программа под цель и уровень ученика. Никакой воды — только нужные темы.</p></article>
+            <article><span><i class="fa-solid fa-chart-line"></i></span><h3>Прозрачный прогресс</h3><p>Видим динамику, корректируем план и отслеживаем домашние задания.</p></article>
+            <article><span><i class="fa-solid fa-comments"></i></span><h3>Разбор ДЗ</h3><p>Проверка с комментариями, работа над ошибками и поддержка между уроками.</p></article>
+            <article><span><i class="fa-solid fa-calendar-days"></i></span><h3>Гибкий график</h3><p>Удобное расписание, заявки на перенос и занятия из любой точки мира.</p></article>
           </div>
 
-          <div class="soft-section">
-            <div class="section-head" style="margin-bottom:12px;">
-              <div class="kicker"><i class="fa-solid fa-compass"></i> Быстрый старт</div>
-              <h2>Выберите следующий шаг</h2>
-              <p class="lead">Посмотрите, как устроена работа: диагностика, реальные кейсы, примеры материалов и быстрый выбор времени для первого занятия.</p>
-            </div>
-            <div class="grid-3">
-              <div class="panel link-card" onclick="setPage('schedule')"><div class="card-icon"><i class="fa-solid fa-calendar-check"></i></div><h3>Пробный урок</h3><p class="muted">Бесплатный анализ результатов диагностики, затем бесплатный разбор результатов.</p></div>
-              <div class="panel link-card" onclick="setPage('cases')"><div class="card-icon"><i class="fa-solid fa-trophy"></i></div><h3>Кейсы учеников</h3><p class="muted">Посмотрите, как строится путь от пробелов к результату.</p></div>
-              <div class="panel link-card" onclick="setPage('lessonExamples')"><div class="card-icon"><i class="fa-solid fa-file-code"></i></div><h3>Примеры файлов</h3><p class="muted">Конспекты, задания и материалы с занятий.</p></div>
-            </div>
+          <div class="edu-main-grid">
+            <section class="edu-card edu-how-card">
+              <div class="edu-section-title"><h2>Как проходит обучение</h2></div>
+              <div class="edu-steps">
+                <div><b>1</b><span><i class="fa-solid fa-comments"></i></span><h3>Знакомимся</h3><p>Определяем цель, уровень и комфортный темп.</p></div>
+                <div><b>2</b><span><i class="fa-solid fa-book-open"></i></span><h3>Учимся</h3><p>Разбираем темы понятными шагами и практикой.</p></div>
+                <div><b>3</b><span><i class="fa-solid fa-clipboard-check"></i></span><h3>Практикуемся</h3><p>Решаем задания, исправляем ошибки и закрепляем.</p></div>
+                <div><b>4</b><span><i class="fa-solid fa-trophy"></i></span><h3>Получаем результат</h3><p>Растут уверенность, оценки и готовность к экзаменам.</p></div>
+              </div>
+            </section>
+
+            <section class="edu-card edu-student-card">
+              <div class="edu-section-title"><h2>Для ученика</h2></div>
+              <div class="edu-dashboard-preview"><div></div><div></div><div></div><span></span></div>
+              <ul class="edu-check-list">
+                <li><i class="fa-solid fa-check"></i><span><strong>Личный кабинет</strong> — ДЗ, материалы и записи в одном месте.</span></li>
+                <li><i class="fa-solid fa-check"></i><span><strong>Прогресс и графики</strong> — видно, что уже сделано и где просадка.</span></li>
+                <li><i class="fa-solid fa-check"></i><span><strong>Материалы</strong> — личная Яндекс-папка для каждого ученика.</span></li>
+              </ul>
+            </section>
           </div>
 
-          <div class="soft-section home-live-section" id="homeLiveContent">
+          <div class="edu-program-row">
+            <div class="edu-program-head"><h2>Программы</h2><a href="/services" data-page="services">Все программы →</a></div>
+            <article><span><i class="fa-solid fa-graduation-cap"></i></span><h3>Подготовка к ОГЭ</h3><p>8–9 класс</p><strong>от 2 200 ₽</strong><small>/ урок</small></article>
+            <article><span><i class="fa-solid fa-user-graduate"></i></span><h3>Подготовка к ЕГЭ</h3><p>10–11 класс</p><strong>от 2 500 ₽</strong><small>/ урок</small></article>
+            <article><span><i class="fa-solid fa-book"></i></span><h3>Школьная программа</h3><p>5–11 класс</p><strong>от 1 800 ₽</strong><small>/ урок</small></article>
+            <article><span><i class="fa-solid fa-star"></i></span><h3>Индивидуальные цели</h3><p>Олимпиады, ВПР, пробелы</p><a href="/booking" data-page="schedule">Обсудить цель →</a></article>
+          </div>
+
+          <div class="soft-section home-live-section edu-live" id="homeLiveContent">
             <div class="section-head" style="margin-bottom:12px;">
               <div class="kicker"><i class="fa-solid fa-wand-magic-sparkles"></i> Актуально</div>
-              <h2>Последние результаты, отзывы и форматы занятий</h2>
+              <h2>Кейсы, отзывы и форматы занятий</h2>
               <p class="lead">Этот блок автоматически обновляется из ЛК преподавателя: кейсы, отзывы, примеры материалов и цены.</p>
             </div>
             <div class="grid-3" id="homeLiveCards">
               <div class="panel"><div class="empty">Загружаю актуальную информацию...</div></div>
             </div>
+          </div>
+
+          <div class="edu-bottom-cta">
+            <div><h2>Готовы к результату?</h2><p>Запишитесь на пробный урок и получите понятный стартовый план подготовки.</p></div>
+            <a class="edu-btn white" href="/booking" data-page="schedule"><i class="fa-solid fa-calendar-check"></i> Записаться на пробный урок</a>
           </div>
         </section>
 
@@ -10429,6 +10466,74 @@ body.student-theme-sky .donut{--accent:#2563eb} body.student-theme-mint .donut{-
   const oldGetCreds=window.getCredsV18;
   setInterval(()=>{renderStudentProgressV18(); cleanProfileDuplicates();},1200);
   document.addEventListener('DOMContentLoaded',()=>{initTheme(); setTimeout(()=>{renderStudentProgressV18(); cleanProfileDuplicates();},600);});
+})();
+</script>
+
+<style>
+/* ===== PLATFORM PATCH v19: EdTech landing design inspired by provided reference ===== */
+:root{
+  --edu-purple:#6d28d9;--edu-purple-2:#8b5cf6;--edu-cyan:#20c4d6;--edu-teal:#0f766e;--edu-ink:#15162c;--edu-soft:#f6f3ff;--edu-card:#ffffff;--edu-shadow:0 22px 60px rgba(31,28,74,.10);
+}
+body.landing-v19{background:radial-gradient(circle at 0 0,rgba(139,92,246,.12),transparent 34%),radial-gradient(circle at 100% 12%,rgba(32,196,214,.13),transparent 30%),#fbfbff;color:var(--edu-ink);}
+.edu-topnav{display:none;position:sticky;top:10px;z-index:3000;width:min(1440px,calc(100vw - 28px));margin:10px auto 0;align-items:center;gap:28px;padding:14px 20px;border:1px solid rgba(109,40,217,.08);border-radius:22px;background:rgba(255,255,255,.88);box-shadow:0 18px 48px rgba(28,25,80,.08);backdrop-filter:blur(18px);}
+body.public-page .edu-topnav{display:flex;}
+.edu-brand{display:flex;align-items:center;gap:12px;min-width:220px;}
+.edu-logo{width:44px;height:44px;border-radius:14px;display:grid;place-items:center;background:linear-gradient(135deg,#7c3aed,#22d3ee);color:#fff;font-size:20px;box-shadow:0 12px 26px rgba(109,40,217,.22);}
+.edu-brand strong{display:block;font-size:17px;font-weight:900;line-height:1.05}.edu-brand small{display:block;color:#77708f;font-weight:700;font-size:12px;line-height:1.2;margin-top:2px}
+.edu-nav-links{display:flex;align-items:center;justify-content:center;gap:28px;flex:1}.edu-nav-links a{font-weight:800;color:#302a57;position:relative;white-space:nowrap}.edu-nav-links a:hover{color:var(--edu-purple)}.edu-nav-links a.active::after{content:"";position:absolute;left:0;right:0;bottom:-9px;height:3px;border-radius:9px;background:linear-gradient(90deg,var(--edu-purple),var(--edu-cyan));}
+.edu-login{display:inline-flex;align-items:center;gap:10px;background:linear-gradient(135deg,#6d28d9,#5b21b6);color:#fff!important;border-radius:14px;padding:13px 18px;font-weight:900;box-shadow:0 14px 30px rgba(109,40,217,.24);white-space:nowrap}.edu-login:hover{transform:translateY(-1px)}
+body.public-page .app{display:block;min-height:auto;}body.public-page aside.sidebar{display:none!important;}body.public-page .content{padding:0 0 28px!important;margin:0!important;}body.public-page .container{max-width:1440px!important;width:min(1440px,calc(100vw - 28px));padding:0!important;margin:0 auto!important;}body.public-page .floating-cta{display:none!important;}
+.edu-hero-section{position:relative;display:grid;grid-template-columns:minmax(360px,.88fr) 1.12fr;gap:26px;align-items:center;min-height:520px;margin:14px 0 22px;padding:46px 72px 38px;border-radius:32px;background:linear-gradient(135deg,rgba(255,255,255,.94),rgba(250,248,255,.82));box-shadow:var(--edu-shadow);overflow:hidden;}
+.edu-hero-section::before{content:"";position:absolute;inset:-25% 50% auto -18%;height:360px;border-radius:0 0 55% 55%;background:rgba(139,92,246,.08);transform:rotate(-8deg)}.edu-hero-copy{position:relative;z-index:2}.edu-eyebrow{display:inline-flex;align-items:center;gap:8px;padding:9px 13px;border-radius:999px;background:#f1edff;color:#6d28d9;font-weight:900;font-size:13px;margin-bottom:18px}.edu-hero-copy h1{font-size:clamp(38px,5.1vw,76px);line-height:.98;letter-spacing:-.07em;margin:0 0 20px;color:#111322;font-weight:950}.edu-hero-copy h1 span{display:block;color:transparent;background:linear-gradient(90deg,#7c3aed,#5b7cfa,#22c8d4);-webkit-background-clip:text;background-clip:text}.edu-lead{font-size:clamp(17px,1.4vw,21px);max-width:680px;color:#4b4865;line-height:1.55;margin:0 0 24px}.edu-hero-actions{display:flex;gap:14px;flex-wrap:wrap}.edu-btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;min-height:52px;padding:14px 22px;border-radius:14px;font-weight:900;border:2px solid transparent;transition:.18s ease;cursor:pointer}.edu-btn.primary{background:linear-gradient(135deg,#6d28d9,#5b21b6);color:#fff!important;box-shadow:0 16px 34px rgba(109,40,217,.26)}.edu-btn.secondary{background:#fff;color:#6d28d9!important;border-color:#d9cdfd}.edu-btn.white{background:#fff;color:#5b21b6!important}.edu-btn:hover{transform:translateY(-2px);box-shadow:0 18px 38px rgba(31,28,74,.14)}.edu-proofline{display:flex;gap:14px;flex-wrap:wrap;margin-top:28px}.edu-proofline span{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:16px;background:#fff;border:1px solid rgba(109,40,217,.08);box-shadow:0 12px 28px rgba(31,28,74,.06)}.edu-proofline i{color:#6d28d9}.edu-proofline strong{font-size:14px;line-height:1}.edu-proofline small{display:block;color:#77708f;font-weight:700;font-size:12px}.edu-hero-visual{position:relative;min-height:470px;z-index:1}.edu-blob{position:absolute;inset:25px 0 45px 65px;border-radius:38% 48% 36% 44%;background:linear-gradient(135deg,#f3efff,#ecfbff);box-shadow:inset 0 0 0 1px rgba(109,40,217,.05)}.edu-illustration-card{position:absolute;border-radius:18px;background:#fff;box-shadow:0 18px 48px rgba(31,28,74,.12);border:1px solid rgba(109,40,217,.08)}.edu-card-video{left:86px;top:62px;width:220px;height:148px;padding:18px}.traffic{display:flex;gap:6px}.traffic i{width:7px;height:7px;border-radius:50%;background:#9d7ff5}.play{position:absolute;left:32px;top:54px;width:54px;height:54px;border-radius:999px;background:#ebe7ff;color:#6d28d9;display:grid;place-items:center}.mini-lines{position:absolute;right:18px;top:50px;display:grid;gap:10px}.mini-lines b{display:block;width:92px;height:12px;border-radius:9px;background:#e9e6f7}.edu-card-chart{left:244px;top:120px;width:150px;height:132px;display:flex;align-items:end;gap:10px;padding:18px;color:#6d28d9}.edu-card-chart i{position:absolute;top:14px;left:14px}.edu-card-chart span{width:22px;border-radius:8px;background:linear-gradient(180deg,#22d3ee,#8b5cf6)}.edu-card-chart span:nth-child(2){height:38px}.edu-card-chart span:nth-child(3){height:72px}.edu-card-chart span:nth-child(4){height:54px}.edu-card-checks{right:52px;top:82px;width:158px;height:144px;padding:24px;display:grid;gap:14px}.edu-card-checks b{display:flex;align-items:center;gap:10px;height:22px}.edu-card-checks i{width:24px;height:24px;border-radius:7px;background:#8b5cf6;color:white;display:grid;place-items:center;font-size:12px}.edu-card-checks b::after{content:"";height:10px;flex:1;border-radius:99px;background:#e9e6f7}.edu-student-figure{position:absolute;right:168px;bottom:40px;width:260px;height:280px}.face{position:absolute;left:86px;top:42px;width:86px;height:86px;border-radius:48% 52% 48% 52%;background:#ffd8c7;box-shadow:inset 12px 0 0 rgba(123,47,139,.15)}.headphones{position:absolute;left:68px;top:35px;width:122px;height:92px;border-radius:80px 80px 40px 40px;border:13px solid #6d28d9;border-bottom:0;z-index:2}.body{position:absolute;left:48px;top:124px;width:166px;height:118px;border-radius:54px 54px 24px 24px;background:linear-gradient(135deg,#15b8b0,#0f766e)}.laptop{position:absolute;left:6px;bottom:0;width:250px;height:90px;border-radius:14px 14px 8px 8px;background:linear-gradient(135deg,#5b21b6,#7c3aed);color:rgba(255,255,255,.72);display:grid;place-items:center;font-size:24px;box-shadow:0 22px 42px rgba(91,33,182,.22)}.edu-books{position:absolute;left:30px;bottom:48px;width:240px;height:62px}.edu-books i{display:block;height:18px;border-radius:9px;margin:6px 0;background:#ffcc35}.edu-books i:nth-child(1){width:210px;background:#6d28d9}.edu-books i:nth-child(2){width:250px;background:#20c4d6}.edu-books i:nth-child(3){width:180px;background:#ffb703}.edu-grade{position:absolute;right:222px;top:28px;width:76px;height:76px;border-radius:30px 30px 30px 6px;background:#d946ef;color:#fff;font-size:30px;font-weight:950;display:grid;place-items:center;box-shadow:0 18px 38px rgba(217,70,239,.24)}
+.edu-benefit-strip{display:grid;grid-template-columns:190px repeat(4,1fr);gap:12px;margin:18px 0 20px}.edu-benefit-strip>*,.edu-card,.edu-program-row,.edu-bottom-cta{border:1px solid rgba(109,40,217,.08);box-shadow:0 16px 44px rgba(31,28,74,.07);}.edu-benefit-strip article,.edu-strip-title{background:#fff;border-radius:24px;padding:22px}.edu-strip-title{display:grid;align-content:center}.edu-strip-title small{font-size:28px;font-weight:950;color:#22223a;line-height:1}.edu-strip-title strong{font-size:28px;font-weight:950;color:#6d28d9;line-height:1}.edu-benefit-strip article{display:grid;grid-template-columns:auto 1fr;column-gap:14px;align-items:start}.edu-benefit-strip article span{width:54px;height:54px;border-radius:19px;display:grid;place-items:center;background:#f2edff;color:#6d28d9;font-size:22px;grid-row:1/3}.edu-benefit-strip h3{margin:0 0 6px;font-size:17px}.edu-benefit-strip p{margin:0;color:#5d5a72;font-weight:600;font-size:14px;line-height:1.45}.edu-main-grid{display:grid;grid-template-columns:1.35fr .65fr;gap:20px}.edu-card{background:#fff;border-radius:28px;padding:28px}.edu-section-title h2{margin:0 0 22px;font-size:26px;letter-spacing:-.04em}.edu-steps{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}.edu-steps div{position:relative;text-align:center}.edu-steps b{display:inline-grid;place-items:center;width:30px;height:30px;border-radius:999px;background:#7c3aed;color:#fff;font-size:14px;margin-bottom:8px}.edu-steps span{display:grid;place-items:center;width:72px;height:72px;border-radius:50%;margin:0 auto 12px;background:#f4f0ff;color:#6d28d9;font-size:28px}.edu-steps h3{margin:0 0 6px;font-size:16px}.edu-steps p{margin:0;color:#68647b;font-size:13px;font-weight:600}.edu-dashboard-preview{height:160px;border-radius:20px;background:linear-gradient(135deg,#1e2550,#5b7cfa);padding:18px;display:grid;gap:10px;position:relative;overflow:hidden}.edu-dashboard-preview div{height:12px;border-radius:9px;background:rgba(255,255,255,.38)}.edu-dashboard-preview div:nth-child(1){width:55%}.edu-dashboard-preview div:nth-child(2){width:82%}.edu-dashboard-preview div:nth-child(3){width:68%}.edu-dashboard-preview span{position:absolute;right:18px;bottom:18px;width:90px;height:62px;border-radius:14px;background:linear-gradient(180deg,#22d3ee,#fff);opacity:.9}.edu-check-list{list-style:none;margin:18px 0 0;padding:0;display:grid;gap:12px}.edu-check-list li{display:flex;gap:10px;color:#47445e;font-weight:650}.edu-check-list i{color:#6d28d9;margin-top:4px}.edu-program-row{margin-top:20px;background:#fff;border-radius:28px;padding:22px;display:grid;grid-template-columns:1.05fr repeat(4,1fr);gap:14px}.edu-program-head{display:grid;align-content:center}.edu-program-head h2{margin:0 0 8px}.edu-program-head a,.edu-program-row article a{color:#6d28d9;font-weight:900}.edu-program-row article{border-radius:22px;background:#fbfaff;border:1px solid rgba(109,40,217,.07);padding:20px}.edu-program-row article span{width:52px;height:52px;border-radius:19px;display:grid;place-items:center;background:#f1edff;color:#6d28d9;font-size:22px;margin-bottom:12px}.edu-program-row h3{margin:0 0 4px;font-size:17px}.edu-program-row p{margin:0 0 10px;color:#746f86;font-weight:700}.edu-program-row strong{font-size:24px;color:#4c1d95}.edu-program-row small{color:#746f86;margin-left:4px}.edu-live{margin-top:20px!important;border-radius:28px!important;background:#fff!important;border:1px solid rgba(109,40,217,.08)!important;box-shadow:0 16px 44px rgba(31,28,74,.07)!important}.edu-bottom-cta{margin-top:20px;border-radius:30px;padding:34px 42px;display:flex;justify-content:space-between;align-items:center;gap:20px;color:#fff;background:linear-gradient(135deg,#5b21b6,#5b7cfa);overflow:hidden;position:relative}.edu-bottom-cta::after{content:"✦ ✧ ✦";position:absolute;right:240px;top:28px;color:rgba(255,255,255,.25);font-size:30px}.edu-bottom-cta h2{font-size:34px;margin:0 0 4px}.edu-bottom-cta p{margin:0;color:rgba(255,255,255,.82);font-weight:700}.edu-bottom-cta .edu-btn{position:relative;z-index:2}
+/* unify old components with new visual language */
+body.public-page .panel,body.public-page .mini-panel,body.public-page .soft-section{border-radius:28px!important;border:1px solid rgba(109,40,217,.08)!important;box-shadow:0 16px 44px rgba(31,28,74,.07)!important;background:#fff!important}.btn:not(.red),button.btn:not(.red){border-radius:14px!important}.btn:not(.secondary):not(.soft):not(.red):not(.green){background:linear-gradient(135deg,#6d28d9,#5b21b6)!important;color:#fff!important}.btn.secondary,.btn.soft{background:#fff!important;color:#6d28d9!important;border:1px solid #d9cdfd!important}.card-icon,.big-icon{background:#f1edff!important;color:#6d28d9!important}
+@media(max-width:1180px){.edu-topnav{gap:14px}.edu-nav-links{gap:14px}.edu-hero-section{grid-template-columns:1fr;padding:34px}.edu-hero-visual{min-height:360px}.edu-benefit-strip{grid-template-columns:1fr 1fr}.edu-strip-title{grid-column:1/-1}.edu-main-grid,.edu-program-row{grid-template-columns:1fr}.edu-steps{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:760px){body.public-page .container,.edu-topnav{width:min(100vw - 18px,1440px)}.edu-topnav{position:sticky;overflow:auto;justify-content:flex-start}.edu-brand{min-width:190px}.edu-nav-links{display:none}.edu-login{margin-left:auto;padding:11px 14px}.edu-hero-section{padding:26px 20px;border-radius:24px}.edu-hero-copy h1{font-size:40px}.edu-hero-visual{display:none}.edu-benefit-strip{grid-template-columns:1fr}.edu-main-grid{grid-template-columns:1fr}.edu-steps{grid-template-columns:1fr}.edu-bottom-cta{display:grid;padding:26px}.edu-proofline{display:grid}.edu-program-row{padding:16px}.edu-card{padding:22px}}
+</style>
+<script>
+/* ===== PLATFORM PATCH v19: public/cabinet display modes and top-nav state ===== */
+(function(){
+  if(window.__platformPatchV19Ready) return; window.__platformPatchV19Ready=true;
+  const publicPages=new Set(['home','about','whyMe','parents','services','schedule','payment','contacts','quizzes','cases','lessonExamples','reviews','faq','rules','login']);
+  const labelMap={home:'Главная',services:'Программы',about:'Обо мне',whyMe:'Почему со мной',reviews:'Отзывы',schedule:'Запись',contacts:'Контакты'};
+  function setMode(page){
+    const isPublic=publicPages.has(page);
+    document.body.classList.toggle('public-page',isPublic);
+    document.body.classList.toggle('cabinet-page',!isPublic);
+    document.querySelectorAll('.edu-nav-links [data-page]').forEach(a=>a.classList.toggle('active',a.dataset.page===page));
+    const top=document.getElementById('eduTopLogin');
+    if(top){
+      const logged=document.body.classList.contains('is-admin')||document.body.classList.contains('is-student')||document.body.classList.contains('is-logged');
+      const target=document.body.classList.contains('is-admin')?'teacherCabinet':(document.body.classList.contains('is-student')?'studentCabinet':'login');
+      top.dataset.page= logged?target:'login';
+      top.href= logged?(window.platformRouteByPage?.[target]||'/teacher'):'/login';
+      top.innerHTML= logged?'<i class="fa-solid fa-user-check"></i> Мой профиль':'<i class="fa-solid fa-user"></i> Личный кабинет';
+    }
+  }
+  const prev=window.setPage;
+  if(typeof prev==='function'){
+    window.setPage=function(page){setMode(page); return prev.apply(this,arguments);};
+  }
+  document.addEventListener('click',function(e){
+    const a=e.target.closest('.edu-topnav a[data-page]');
+    if(!a) return;
+    if(e.metaKey||e.ctrlKey||e.shiftKey||e.altKey||e.button===1) return;
+    e.preventDefault();
+    if(typeof window.setPage==='function'){
+      history.pushState?.({page:a.dataset.page},'',a.getAttribute('href')||'/');
+      window.setPage(a.dataset.page);
+      window.scrollTo({top:0,behavior:'auto'});
+    }
+  },true);
+  setTimeout(()=>{
+    const current=(document.querySelector('.page.active')?.id||'page-home').replace('page-','');
+    setMode(current);
+  },100);
+  setInterval(()=>{
+    const current=(document.querySelector('.page.active')?.id||'page-home').replace('page-','');
+    setMode(current);
+  },1600);
 })();
 </script>
 
